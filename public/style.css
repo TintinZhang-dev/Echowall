@@ -328,7 +328,7 @@ img, video {
 }
 
 .avatar-default {
-  background: #1d9bf0;
+  background: var(--accent);
 }
 
 .avatar-anonymous {
@@ -337,7 +337,7 @@ img, video {
 }
 
 .avatar-initials {
-  background: #1d9bf0;
+  background: var(--accent);
 }
 
 .avatar-img {

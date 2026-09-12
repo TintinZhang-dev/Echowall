@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const points = require('../points');
 const { JWT_SECRET, getTokenFromReq, cookieOptions } = require('../auth-helper');
+const { siteConfig } = require('../config');
 
 // ===== Auth Middleware =====
 function auth(req, res, next) {
@@ -154,13 +155,14 @@ router.post('/register', (req, res) => {
     );
 
     // Send welcome + community rules notifications immediately after registration
+    // 文案读 config（白标化 Phase A）：品牌名/学校名/联系邮箱/创始人/域名
     db.prepare('INSERT INTO notifications (user_id, type, title, content) VALUES (?, ?, ?, ?)').run(
-      result.lastInsertRowid, 'system', '👋 欢迎来到 Phewall',
-      '欢迎来到华二普陀校园墙！你可以匿名或实名发帖、评论、点赞、转发，在分区里找到同好。welcome 置顶帖会在你注册12小时后自动从置顶消失，但随时可以回来逛逛。有任何问题或建议，点💬给我留言，或发邮件 tinzhang3141@gmail.com。祝你玩得开心！—— 创始人 张希辰'
+      result.lastInsertRowid, 'system', '👋 欢迎来到 ' + siteConfig.brand.logoText,
+      '欢迎来到' + siteConfig.school.name + '校园墙！你可以匿名或实名发帖、评论、点赞、转发，在分区里找到同好。welcome 置顶帖会在你注册12小时后自动从置顶消失，但随时可以回来逛逛。有任何问题或建议，点💬给我留言，或发邮件 ' + siteConfig.support.contactEmail + '。祝你玩得开心！—— 创始人 ' + siteConfig.founder.name
     );
     db.prepare('INSERT INTO notifications (user_id, type, title, content) VALUES (?, ?, ?, ?)').run(
       result.lastInsertRowid, 'system', '📜 请阅读《社区规则协议》',
-      '本平台规则、你的权利与数据处理说明详见《社区规则协议》：https://phewall.com/terms 。要点：禁止辱骂/谣言/泄露他人隐私/广告；被举报5次自动隐藏；内容涉及你本人时举报（选"涉及自己"）立即隐藏；所有删帖/封禁均记录原因并公示；你享有数据导出与注销账号的权利。有疑问点💬给我留言。'
+      '本平台规则、你的权利与数据处理说明详见《社区规则协议》：https://' + siteConfig.domain + '/terms 。要点：禁止辱骂/谣言/泄露他人隐私/广告；被举报5次自动隐藏；内容涉及你本人时举报（选"涉及自己"）立即隐藏；所有删帖/封禁均记录原因并公示；你享有数据导出与注销账号的权利。有疑问点💬给我留言。'
     );
 
     res.cookie('pw_token', token, cookieOptions(req));

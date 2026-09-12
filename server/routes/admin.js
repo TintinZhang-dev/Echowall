@@ -6,6 +6,7 @@ const db = require('../db');
 const points = require('../points');
 const { deleteFromR2 } = require('../storage');
 const { JWT_SECRET, getTokenFromReq, cookieOptions } = require('../auth-helper');
+const { siteConfig } = require('../config');
 
 // Auth middleware — pure JWT user-based auth
 function auth(req, res, next) {
@@ -371,11 +372,14 @@ router.post('/appeals/:id/approve-name-dispute', (req, res) => {
           }
         }
 
-        // Notify the banned user
+        // Notify the banned user（联系方式读 config；wechat 为空则去掉该句）
+        const banContact = siteConfig.founder.wechat
+          ? ' 如有疑问请联系管理员微信 ' + siteConfig.founder.wechat + '。'
+          : '';
         db.prepare(
           'INSERT INTO notifications (user_id, type, title, content) VALUES (?, ?, ?, ?)'
         ).run(targetUser.id, 'account_banned', '账号已被封禁',
-          `你的账号因占用他人姓名已被封禁。如有疑问请联系管理员微信 SapereAude_Tintin。`);
+          '你的账号因占用他人姓名已被封禁。' + banContact);
       }
     }
 

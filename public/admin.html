@@ -10,7 +10,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>管理 — Phewall</title>
+  <title data-site-title="管理|brand.logoText">管理 — Phewall</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root {
@@ -183,7 +183,7 @@
     <!-- Admin Screen -->
     <div id="admin-screen" style="display:none;">
       <div class="header">
-        <h1>⚙️ Phewall — 管理后台</h1>
+        <h1>⚙️ <span data-site="brand.logoText">Phewall</span> — 管理后台</h1>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="admin-role-badge" style="font-size:0.78rem;padding:2px 8px;border-radius:20px;background:var(--accent);color:#fff;font-weight:600;display:none;">超级管理员</span>
           <a href="/">← 返回主页</a>
@@ -821,7 +821,10 @@
                 actions += `<button class="action-sm" onclick="resetPassword(${a.id})" style="color:var(--accent);">重置密码</button>`;
               }
               if (a.appeal_type === 'name_dispute') {
-                actions += `<span style="font-size:0.72rem;color:var(--text-muted);margin:0 4px;" title="请加微信 SapereAude_Tintin 核实身份后，再点击封禁占用者">🔒 需微信核实</span>`;
+                const wx = window.siteGet ? window.siteGet('founder.wechat') : '';
+                const wxTip = wx ? '请加微信 ' + wx + ' 核实身份后，再点击封禁占用者' : '请联系管理员核实身份后，再点击封禁占用者';
+                const wxLabel = wx ? '🔒 需微信核实' : '🔒 需管理员核实';
+                actions += `<span style="font-size:0.72rem;color:var(--text-muted);margin:0 4px;" title="${wxTip}">${wxLabel}</span>`;
                 actions += `<button class="action-sm" onclick="banOccupier(${a.id})" style="color:var(--danger);border-color:var(--danger);">封禁占用者</button>`;
               }
               if (a.appeal_type === 'other') {
@@ -1353,5 +1356,6 @@
     }
   </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+<script src="/js/site.js?v=202609120000"></script>
 </body>
 </html>

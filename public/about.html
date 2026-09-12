@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title data-site-title="关于|product.name">关于 — EchoWall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609120208">
+  <style>
+    .about-page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .about-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .about-card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .about-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; margin: 6px 0; }
+    .about-hero { text-align: center; }
+    .about-hero h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    .about-hero .slogan { color: var(--accent); font-weight: 600; }
+    .about-footer {
+      text-align: center;
+      padding: 8px 0 32px;
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" style="color:var(--text);text-decoration:none;font-weight:700;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">ℹ️ 关于</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="about-page">
+    <div class="about-card about-hero">
+      <h1 data-site="product.name">EchoWall</h1>
+      <p class="slogan" data-site="product.slogan">每所学校都该有的墙</p>
+      <p>当前实例归属：<span data-site="school.name">华二普陀</span>（<span data-site="school.shortName">华普</span>）</p>
+    </div>
+
+    <div class="about-card">
+      <h2>🌈 这是什么</h2>
+      <p><span data-site="product.name">EchoWall</span>（<span data-site="product.nameZh">回声墙</span>）是部署在 <span data-site="school.name">华二普陀</span> 的校园匿名交流墙。你可以匿名或实名发帖、评论、点赞、转发、关注，在分区里找到同好。</p>
+      <p>本平台为个人运营的非盈利性校内项目，所有内容均由本校同学共同创造与维护。</p>
+    </div>
+
+    <div class="about-card">
+      <h2>👤 创始人</h2>
+      <p><a data-site="founder.name" data-site-href="founder.link" target="_blank" rel="noopener noreferrer">张希辰</a>（<span data-site="founder.nameEn">Tintin Zhang</span>）</p>
+    </div>
+
+    <div class="about-card">
+      <h2>📦 开源仓库</h2>
+      <p><a data-site-href="founder.link" target="_blank" rel="noopener noreferrer">GitHub 仓库</a></p>
+    </div>
+
+    <div class="about-card">
+      <h2>📮 联系方式</h2>
+      <p>邮箱：<span data-site="support.contactEmail">tinzhang3141@gmail.com</span></p>
+      <p>微信：<span data-site="founder.wechat">SapereAude_Tintin</span></p>
+    </div>
+
+    <div class="about-footer">
+      <a href="/" class="btn btn-primary" style="text-decoration:none;">🏠 返回首页</a>
+    </div>
+  </div>
+<script src="/js/site.js?v=202609120000"></script>
+</body>
+</html>

@@ -10,14 +10,14 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>注册 — Phewall</title>
+  <title data-site-title="注册|brand.logoText">注册 — Phewall</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css?v=202609060208">
 </head>
 <body class="auth-page">
   <div class="auth-card">
-    <h1>✨ 注册 Phewall</h1>
-    <p class="auth-subtitle">加入 Phewall 社区</p>
+    <h1>✨ 注册 <span data-site="brand.logoText">Phewall</span></h1>
+    <p class="auth-subtitle">加入 <span data-site="brand.logoText">Phewall</span> 社区</p>
 
     <div id="internal-fields">
     <div class="form-row">
@@ -37,7 +37,7 @@
       <label class="form-label">用户名 <span class="form-required">*</span></label>
       <input type="text" id="ext_username" class="form-input" placeholder="设置你的用户名" maxlength="50" autocomplete="username">
       <label class="form-label">学校 <span class="form-hint">（可选）</span></label>
-      <input type="text" id="ext_school" class="form-input" placeholder="如 华二普陀（外校同学可不填）" maxlength="50">
+      <input type="text" id="ext_school" class="form-input" placeholder="如 华二普陀（外校同学可不填）" data-site="如 {school.name}（外校同学可不填）" data-site-attr="placeholder" maxlength="50">
     </div>
 
     <label class="form-label">姓名 <span class="form-required">*</span></label>
@@ -209,5 +209,6 @@
     });
   </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+<script src="/js/site.js?v=202609120000"></script>
 </body>
 </html>

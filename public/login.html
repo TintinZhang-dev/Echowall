@@ -10,13 +10,13 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>登录 — Phewall</title>
+  <title data-site-title="登录|brand.logoText">登录 — Phewall</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css?v=202609060208">
 </head>
 <body class="auth-page">
   <div class="auth-card">
-    <h1>🔐 登录 Phewall</h1>
+    <h1>🔐 登录 <span data-site="brand.logoText">Phewall</span></h1>
     <p class="auth-subtitle" id="login-subtitle">使用你的届、班级和姓名登录</p>
     <p class="auth-warning" id="login-warning">⚠️ 请使用真实信息，占用他人姓名将被封禁</p>
 
@@ -163,5 +163,6 @@
     });
   </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+<script src="/js/site.js?v=202609120000"></script>
 </body>
 </html>

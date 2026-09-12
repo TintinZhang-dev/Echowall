@@ -1,0 +1,32 @@
+{
+  "school": {
+    "name": "华二普陀",
+    "shortName": "华普",
+    "hasClassSystem": true
+  },
+  "product": {
+    "name": "EchoWall",
+    "nameZh": "回声墙",
+    "slogan": "每所学校都该有的墙"
+  },
+  "brand": {
+    "logoText": "Phewall",
+    "themeColor": "#1D9BF0"
+  },
+  "support": {
+    "contactEmail": "tinzhang3141@gmail.com"
+  },
+  "founder": {
+    "name": "张希辰",
+    "nameEn": "Tintin Zhang",
+    "wechat": "SapereAude_Tintin",
+    "link": "https://github.com/TintinZhang-dev",
+    "showInFooter": true,
+    "showOnAbout": true,
+    "exposeInApi": true
+  },
+  "registry": {
+    "boards": ["足球", "篮球", "F1"]
+  },
+  "domain": "phewall.com"
+}

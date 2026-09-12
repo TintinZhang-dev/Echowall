@@ -10,7 +10,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Phewall</title>
+  <title data-site-title="brand.logoText">Phewall</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css?v=202609060208">
 </head>
@@ -19,7 +19,7 @@
     <!-- Sidebar (desktop: always visible, mobile: overlay) -->
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-inner">
-        <div class="sidebar-logo">Phewall</div>
+        <div class="sidebar-logo" data-site="brand.logoText">Phewall</div>
 
         <div class="sidebar-nav">
           <a href="/" class="nav-item active" data-page="home">
@@ -102,7 +102,7 @@
       <!-- Mobile header -->
       <header class="mobile-header" id="mobile-header">
         <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
-        <span class="mobile-header-title">Phewall</span>
+        <span class="mobile-header-title" data-site="brand.logoText">Phewall</span>
         <div class="mobile-header-actions">
           <a href="/dm" id="mobile-dm-btn" class="mobile-icon-btn" style="display:none;text-decoration:none;color:var(--text);">
             ✉️<span id="mobile-dm-badge" class="nav-badge" style="display:none;">0</span>
@@ -380,5 +380,6 @@
 
   <script src="/app.js?v=202609060208"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+<script src="/js/site.js?v=202609120000"></script>
 </body>
 </html>

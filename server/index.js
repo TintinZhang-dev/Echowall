@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const points = require('./points');
 const { upload } = require('./storage');
+const { siteConfig } = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -111,6 +112,17 @@ app.use('/downloads', (req, res, next) => {
   next();
 });
 
+// security.txt 动态生成（Contact 邮箱 / Canonical / Policy 读 config，白标化随域名一起换）
+app.get('/.well-known/security.txt', (req, res) => {
+  const domain = siteConfig.domain || 'phewall.com';
+  res.type('text/plain').send(
+    'Contact: mailto:' + siteConfig.support.contactEmail + '\n' +
+    'Expires: 2027-08-01T00:00:00.000Z\n' +
+    'Canonical: https://' + domain + '/.well-known/security.txt\n' +
+    'Policy: https://' + domain + '/terms\n'
+  );
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   index: false, // 不自动吐 index.html,让 / 走登录门禁后由显式路由服务
   etag: true,
@@ -132,13 +144,15 @@ app.use((req, res, next) => {
   const p = req.path;
   // 游客可访问的页面
   if (p === '/login' || p === '/register' || p === '/reset-password' || p === '/appeal' ||
-      p === '/terms' || p === '/guide' || p === '/app' || p === '/app/' || p === '/download' ||
+      p === '/terms' || p === '/guide' || p === '/about' || p === '/app' || p === '/app/' || p === '/download' ||
       p === '/diag' || p === '/security.txt' || p === '/robots.txt' || p === '/favicon.ico' ||
       p.startsWith('/downloads/') || p.startsWith('/manage-') || p.startsWith('/.well-known/')) {
     return next();
   }
   // 游客可访问的 API(登录/注册/登出/申诉/密码重置都在 /api/auth 下,后台登录单独放行)
-  if (p.startsWith('/api/auth/') || p === '/api/admin/login' || p === '/api/debug' || p === '/api/app/version') {
+  // /api/site-config 供登录页等未登录页面取品牌配置；/api/version 留痕(均无敏感字段)
+  if (p.startsWith('/api/auth/') || p === '/api/admin/login' || p === '/api/debug' || p === '/api/app/version' ||
+      p === '/api/site-config' || p === '/api/version') {
     return next();
   }
   if (p.startsWith('/api/')) {
@@ -154,7 +168,7 @@ app.get('/', (req, res) => {
 });
 
 // Clean URLs — serve .html without extension
-const pages = ['login', 'register', 'settings', 'appeal', 'reset-password', 'notifications', 'terms', 'guide', 'boards', 'board', 'dm', 'app'];
+const pages = ['login', 'register', 'settings', 'appeal', 'reset-password', 'notifications', 'terms', 'guide', 'about', 'boards', 'board', 'dm', 'app'];
 // /download → 安卓 App 下载（重定向到 App 页）
 app.get('/download', (req, res) => {
   res.redirect(301, '/app');
@@ -237,6 +251,7 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/boards', require('./routes/boards'));
 app.use('/api/dm', require('./routes/dm'));
 app.use('/api/points', require('./routes/points'));
+app.use('/api', require('./routes/site'));
 
 // Debug error logging (client-side JS errors from iOS etc.)
 app.post('/api/debug', (req, res) => {
@@ -267,6 +282,15 @@ app.get('/api/app/version', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: '服务器错误' });
   }
+});
+
+// 站点版本留痕（白标化 Phase A）：版本号 + 产品名 + 创始人英文名
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: require('../package.json').version,
+    product: siteConfig.product.name,
+    founder: siteConfig.founder.nameEn
+  });
 });
 
 // Serve search and user pages
@@ -346,5 +370,5 @@ setInterval(resetPinCounters, 60 * 60 * 1000);
 
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Phewall running on http://0.0.0.0:${PORT}`);
+  console.log(`${siteConfig.brand.logoText} running on http://0.0.0.0:${PORT}`);
 });
