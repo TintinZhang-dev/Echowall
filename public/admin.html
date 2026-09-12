@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>管理 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --bg: #f7f9fa;
+      --card-bg: #ffffff;
+      --text: #0f1419;
+      --text-muted: #536471;
+      --accent: #1d9bf0;
+      --accent-hover: #1a8cd8;
+      --border: #eff3f4;
+      --danger: #f4212e;
+      --danger-hover: #dc1f2b;
+      --success: #00ba7c;
+      --warning: #f39c12;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+        'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 0 16px 24px;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+      flex-wrap: wrap; gap: 10px;
+    }
+    .header h1 { font-size: 1.2rem; font-weight: 700; }
+    .header a { color: var(--text-muted); font-size: 0.85rem; text-decoration: none; }
+    .header a:hover { color: var(--text); }
+
+    /* Login */
+    .login-box {
+      background: var(--card-bg); border-radius: var(--radius); padding: 32px;
+      max-width: 400px; margin: 60px auto; text-align: center;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .login-box h2 { margin-bottom: 20px; font-size: 1.1rem; }
+    .login-box input {
+      width: 100%; background: var(--bg-secondary, #f7f9fa); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 14px; color: var(--text);
+      font-size: 0.95rem; font-family: inherit; outline: none; margin-bottom: 12px;
+    }
+    .login-box input:focus { border-color: var(--accent); }
+    .login-box button {
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: var(--radius); padding: 10px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .login-box button:hover { background: var(--accent-hover); }
+    .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 8px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab {
+      background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border);
+      padding: 8px 18px; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text); border-color: var(--accent); }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Filters */
+    .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn {
+      background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 16px; font-size: 0.82rem; cursor: pointer;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .filter-btn:hover { color: var(--text); }
+    .filter-btn.active { background: rgba(74,158,255,0.15); color: var(--accent); border-color: var(--accent); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--card-bg); border-radius: var(--radius); overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 700px; }
+    th {
+      text-align: left; padding: 12px 10px; border-bottom: 2px solid var(--border);
+      color: var(--text-muted); font-weight: 600; text-transform: uppercase;
+      font-size: 0.72rem; letter-spacing: 0.5px;
+    }
+    td { padding: 10px 10px; border-bottom: 1px solid rgba(42,42,94,0.5); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .content-preview { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600;
+    }
+    .badge-pinned { background: rgba(74,158,255,0.2); color: var(--accent); }
+    .badge-hidden { background: rgba(231,76,60,0.2); color: var(--danger); }
+    .badge-reported { background: rgba(243,156,18,0.2); color: var(--warning); }
+
+    .action-sm {
+      background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 4px; font-size: 0.78rem; cursor: pointer;
+      font-family: inherit; margin: 2px; transition: all 0.2s; white-space: nowrap;
+    }
+    .action-sm:hover { color: var(--text); border-color: var(--accent); }
+    .action-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* Ban form */
+    .ban-form {
+      background: var(--card-bg); border-radius: var(--radius); padding: 20px;
+      display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .ban-form label { font-size: 0.82rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+    .ban-form input {
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px 12px; color: var(--text); font-size: 0.88rem; font-family: inherit; outline: none;
+    }
+    .ban-form input:focus { border-color: var(--accent); }
+    .ban-form button {
+      background: var(--danger); color: #fff; border: none; border-radius: var(--radius);
+      padding: 10px 20px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .ban-form button:hover { background: var(--danger-hover); }
+
+    .empty-text { color: var(--text-muted); padding: 32px; text-align: center; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      background: var(--card-bg); color: var(--text); padding: 10px 24px;
+      border-radius: 20px; font-size: 0.9rem; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      z-index: 400; border: 1px solid var(--border);
+    }
+    .toast.error { border-color: rgba(231,76,60,0.4); color: var(--danger); }
+    .toast.success { border-color: rgba(46,204,113,0.4); color: var(--success); }
+
+    /* Spinner */
+    .spinner { display: inline-flex; gap: 5px; padding: 12px; }
+    .spinner-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite ease-in-out; }
+    .spinner-dot:nth-child(2) { animation-delay: 0.15s; }
+    .spinner-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-box">
+      <h2>🔐 管理员登录</h2>
+      <div id="login-error" style="color:var(--danger);font-size:0.85rem;margin-bottom:10px;display:none;"></div>
+      <div id="login-form" style="display:block;">
+        <input type="text" id="login-name" placeholder="管理员姓名" onkeydown="if(event.key==='Enter')userLogin()" style="margin-bottom:8px;">
+        <input type="password" id="login-password" placeholder="密码" onkeydown="if(event.key==='Enter')userLogin()" style="margin-bottom:8px;">
+        <button onclick="userLogin()" style="width:100%;">登录</button>
+      </div>
+    </div>
+
+    <!-- Admin Screen -->
+    <div id="admin-screen" style="display:none;">
+      <div class="header">
+        <h1>⚙️ Phewall — 管理后台</h1>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="admin-role-badge" style="font-size:0.78rem;padding:2px 8px;border-radius:20px;background:var(--accent);color:#fff;font-weight:600;display:none;">超级管理员</span>
+          <a href="/">← 返回主页</a>
+          <button class="action-sm" onclick="logout()" style="margin-left:12px;">退出登录</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('posts')" id="tab-posts">📋 帖子管理</button>
+        <button class="tab" onclick="switchTab('reports')" id="tab-reports">🚩 举报管理</button>
+        <button class="tab" onclick="switchTab('appeals')" id="tab-appeals">📩 申诉管理</button>
+        <button class="tab" onclick="switchTab('ban')" id="tab-ban">🚫 IP 封禁</button>
+        <button class="tab" onclick="switchTab('users')" id="tab-users">👤 封禁用户</button>
+        <button class="tab" onclick="switchTab('verifications')" id="tab-verifications">✅ 认证审核</button>
+        <button class="tab" onclick="switchTab('manage-users')" id="tab-manage-users">👥 账户管理</button>
+        <button class="tab" onclick="switchTab('boards')" id="tab-boards">📌 板块管理</button>
+        <button class="tab" onclick="switchTab('logs')" id="tab-logs">📜 操作日志</button>
+        <button class="tab" onclick="switchTab('messages')" id="tab-messages" style="display:none;">💬 留言</button>
+      </div>
+
+      <!-- Posts Tab -->
+      <div id="panel-posts">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" id="admin-post-search" placeholder="搜索帖子内容..." style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:0.88rem;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')searchAdminPosts()">
+          <button onclick="searchAdminPosts()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;">搜索</button>
+        </div>
+        <div class="filters">
+          <button class="filter-btn active" onclick="setFilter('all')" id="filter-all">全部</button>
+          <button class="filter-btn" onclick="setFilter('reported')" id="filter-reported">被举报</button>
+          <button class="filter-btn" onclick="setFilter('hidden')" id="filter-hidden">已隐藏</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>帖子</th>
+                <th>内容</th>
+                <th>昵称</th>
+                <th>IP</th>
+                <th>时间</th>
+                <th>👍</th>
+                <th>💬</th>
+                <th>🚩</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="posts-tbody"></tbody>
+          </table>
+        </div>
+        <div id="posts-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Reports Tab -->
+      <div id="panel-reports" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>ID</th>
+                <th>内容</th>
+                <th>举报IP</th>
+                <th>原因</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="reports-tbody"></tbody>
+          </table>
+        </div>
+        <div id="reports-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Appeals Tab -->
+      <div id="panel-appeals" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>申诉</th>
+                <th>届</th>
+                <th>班级</th>
+                <th>姓名</th>
+                <th>类型</th>
+                <th>原因</th>
+                <th>状态</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="appeals-tbody"></tbody>
+          </table>
+        </div>
+        <div id="appeals-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Ban Tab -->
+      <div id="panel-ban" style="display:none;">
+        <div class="ban-form">
+          <div>
+            <label>IP 地址</label>
+            <input type="text" id="ban-ip" placeholder="例如: 192.168.1.1" style="width:180px;">
+          </div>
+          <div>
+            <label>封禁天数（可选）</label>
+            <input type="number" id="ban-days" placeholder="留空=永久" min="1" max="365" style="width:120px;">
+          </div>
+          <div>
+            <label>原因（可选）</label>
+            <input type="text" id="ban-reason" placeholder="封禁原因" style="width:200px;">
+          </div>
+          <button onclick="banIp()">封禁</button>
+        </div>
+        <div class="table-wrap" style="margin-top:16px;">
+          <table>
+            <thead>
+              <tr>
+                <th>封禁</th>
+                <th>IP</th>
+                <th>原因</th>
+                <th>到期时间</th>
+                <th>封禁时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="ban-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Banned Users Tab -->
+      <div id="panel-users" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>届</th>
+                <th>班级</th>
+                <th>姓名</th>
+                <th>封禁原因</th>
+                <th>封禁到期</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+        <div id="users-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Logs Tab -->
+      <!-- Verification Panel -->
+      <div id="panel-verifications" style="display:none;">
+        <table><thead><tr>
+          <th>认证</th><th>用户</th><th>届</th><th>班级</th><th>组织名称</th><th>职务</th><th>说明</th><th>提交时间</th><th>操作</th>
+        </tr></thead><tbody id="verifications-tbody"></tbody></table>
+        <div id="verifications-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Account Management Panel -->
+      <div id="panel-manage-users" style="display:none;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <input type="text" id="admin-user-search" placeholder="搜索用户名/昵称..." style="flex:1;max-width:300px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:0.88rem;font-family:inherit;outline:none;">
+          <button onclick="loadManageUsers()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;">搜索</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>用户</th><th>姓名</th><th>昵称</th><th>届·班</th><th>角色</th><th>认证</th><th>状态</th><th>帖子数</th><th>注册时间</th><th>操作</th>
+            </tr></thead>
+            <tbody id="manage-users-tbody"></tbody>
+          </table>
+        </div>
+        <div id="manage-users-loader" style="text-align:center;padding:16px;"></div>
+        <div id="manage-users-pagination" style="display:none;justify-content:center;align-items:center;gap:8px;padding:12px 0;"></div>
+      </div>
+
+      <!-- Boards Management Tab -->
+      <div id="panel-boards" style="display:none;">
+        <h3 style="margin-bottom:14px;">📌 板块管理</h3>
+        <!-- Create form -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end;padding:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.78rem;color:var(--text-muted);">图标 Emoji</label>
+            <input type="text" id="board-create-icon" placeholder="📌" maxlength="4" style="width:60px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:1.1rem;font-family:inherit;text-align:center;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+            <label style="font-size:0.78rem;color:var(--text-muted);">名称 <span style="color:var(--danger);">*</span></label>
+            <input type="text" id="board-create-name" placeholder="板块名称" maxlength="20" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:0.88rem;font-family:inherit;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:2;min-width:160px;">
+            <label style="font-size:0.78rem;color:var(--text-muted);">简介</label>
+            <input type="text" id="board-create-desc" placeholder="板块简介" maxlength="200" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:0.88rem;font-family:inherit;">
+          </div>
+          <button onclick="createBoard()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">创建板块</button>
+        </div>
+        <div id="board-create-msg" style="font-size:0.82rem;margin-bottom:12px;display:none;"></div>
+        <!-- Board list -->
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>图标</th><th>名称</th><th>简介</th><th>创建时间</th><th>操作</th></tr></thead>
+            <tbody id="admin-boards-list"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panel-logs" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日志</th>
+                <th>操作</th>
+                <th>目标类型</th>
+                <th>目标</th>
+                <th>详情</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
+        <div id="logs-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+
+      <!-- Messages Panel (founder only) -->
+      <div id="panel-messages" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>留言</th>
+                <th>内容</th>
+                <th>留言者</th>
+                <th>IP</th>
+                <th>时间</th>
+                <th>站长回复</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="messages-tbody"></tbody>
+          </table>
+        </div>
+        <div id="messages-loader" style="text-align:center;padding:16px;"></div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+  </div>
+
+  <script>
+    let token = '';
+    let currentTab = 'posts';
+    let currentFilter = 'all';
+    let postsPage = 1;
+    let loadingPosts = false;
+    let hasMorePosts = true;
+
+    // ===== Auth =====
+    async function userLogin() {
+      const name = document.getElementById('login-name').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+
+      if (!name || !password) {
+        errEl.textContent = '请输入姓名和密码';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || '登录失败';
+          errEl.style.display = 'block';
+          return;
+        }
+        token = data.token;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-screen').style.display = 'block';
+        if (data.isFounder) {
+          document.getElementById('admin-role-badge').textContent = '👑 超级创作者管理员 (' + escapeHtml(data.adminName) + ')';
+          document.getElementById('admin-role-badge').style.display = 'inline';
+          document.getElementById('tab-messages').style.display = '';
+        } else {
+          document.getElementById('admin-role-badge').textContent = '🛡️ 管理员 (' + escapeHtml(data.adminName) + ')';
+          document.getElementById('admin-role-badge').style.display = 'inline';
+        }
+        loadPosts();
+      } catch (err) {
+        errEl.textContent = '网络错误';
+        errEl.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      token = '';
+      document.getElementById('login-screen').style.display = 'block';
+      document.getElementById('admin-screen').style.display = 'none';
+    }
+
+    // ===== Tabs =====
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.querySelectorAll('[id^="panel-"]').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + tab).style.display = 'block';
+
+      if (tab === 'posts') loadPosts();
+      if (tab === 'reports') loadReports();
+      if (tab === 'appeals') loadAppeals();
+      if (tab === 'ban') loadBannedIps();
+      if (tab === 'users') loadBannedUsers();
+      if (tab === 'verifications') loadVerifications();
+      if (tab === 'manage-users') loadManageUsers();
+      if (tab === 'boards') loadAdminBoards();
+      if (tab === 'logs') loadLogs();
+      if (tab === 'messages') loadMessages();
+    }
+
+    // ===== Posts =====
+    function setFilter(filter) {
+      currentFilter = filter;
+      postsPage = 1;
+      hasMorePosts = true;
+      document.getElementById('admin-post-search').value = '';
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('filter-' + filter).classList.add('active');
+      loadPosts();
+    }
+
+    function searchAdminPosts() {
+      postsPage = 1;
+      hasMorePosts = true;
+      currentFilter = 'all';
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('filter-all').classList.add('active');
+      loadPosts();
+    }
+
+    async function loadPosts() {
+      if (loadingPosts || !hasMorePosts) return;
+      loadingPosts = true;
+      const loader = document.getElementById('posts-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+
+      try {
+        const q = document.getElementById('admin-post-search')?.value?.trim() || '';
+        const qParam = q ? `&q=${encodeURIComponent(q)}` : '';
+        const res = await fetch(`/api/admin/posts?filter=${currentFilter}&page=${postsPage}&limit=50${qParam}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        const tbody = document.getElementById('posts-tbody');
+        if (postsPage === 1) tbody.innerHTML = '';
+
+        if (!data.posts || data.posts.length === 0) {
+          if (postsPage === 1) tbody.innerHTML = '<tr><td colspan="10" class="empty-text">暂无帖子</td></tr>';
+          hasMorePosts = false;
+        } else {
+          data.posts.forEach(p => {
+            const badges = [];
+            if (p.pinned) badges.push('<span class="badge badge-pinned">置顶</span>');
+            if (p.hidden) badges.push('<span class="badge badge-hidden">隐藏</span>');
+            if (p.report_count > 0) badges.push(`<span class="badge badge-reported">${p.report_count}举报</span>`);
+
+            const content = (p.content || '').substring(0, 60).replace(/\n/g, ' ');
+            const time = p.created_at ? p.created_at.substring(0, 16) : '';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>#${p.id}</td>
+              <td><span class="content-preview" title="${escapeHtml(p.content || '')}">${escapeHtml(content)}</span></td>
+              <td>${escapeHtml(p.nickname || '匿名')}</td>
+              <td style="font-family:monospace;font-size:0.75rem;">${escapeHtml(p.ip || '')}</td>
+              <td>${time}</td>
+              <td>${p.like_count || 0}</td>
+              <td>${p.comment_count || 0}</td>
+              <td>${p.report_count || 0}</td>
+              <td>${badges.join(' ')}</td>
+              <td>
+                <button class="action-sm" onclick="togglePin(${p.id})">${p.pinned ? '取消置顶' : '置顶'}</button>
+                <button class="action-sm" onclick="toggleHide(${p.id})">${p.hidden ? '取消隐藏' : '隐藏'}</button>
+                <button class="action-sm danger" onclick="deletePost(${p.id})">删除</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+          postsPage++;
+          hasMorePosts = postsPage <= data.totalPages;
+        }
+      } catch (err) {
+        console.error(err);
+        if (postsPage === 1) document.getElementById('posts-tbody').innerHTML = '<tr><td colspan="9" class="empty-text">加载失败</td></tr>';
+      }
+
+      loadingPosts = false;
+      loader.innerHTML = '';
+      if (hasMorePosts) {
+        loader.innerHTML = '<button class="action-sm" onclick="loadPosts()">加载更多</button>';
+      }
+    }
+
+    async function togglePin(id) {
+      try {
+        const res = await fetch(`/api/admin/posts/${id}/pin`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.pinned ? '已置顶' : '已取消置顶', 'success');
+        postsPage = 1; hasMorePosts = true; loadPosts();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function toggleHide(id) {
+      try {
+        const res = await fetch(`/api/admin/posts/${id}/hide`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.hidden ? '已隐藏' : '已取消隐藏', 'success');
+        postsPage = 1; hasMorePosts = true; loadPosts();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function deletePost(id) {
+      if (!confirm('确定要永久删除这条帖子吗？此操作不可撤销。')) return;
+      try {
+        const res = await fetch(`/api/admin/posts/${id}/delete`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.error || '删除失败：服务器返回错误', 'error');
+          return;
+        }
+        showToast('已删除', 'success');
+        postsPage = 1; hasMorePosts = true; loadPosts();
+      } catch (err) { showToast('删除失败：网络错误', 'error'); }
+    }
+
+    // ===== Reports =====
+    async function loadReports() {
+      const loader = document.getElementById('reports-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch('/api/admin/reports', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('reports-tbody');
+        if (!data.reports || data.reports.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-text">暂无举报</td></tr>';
+        } else {
+          tbody.innerHTML = data.reports.map(r => {
+            const isComment = r.type === 'comment';
+            const badge = isComment
+              ? '<span class="badge" style="background:rgba(155,89,182,0.2);color:#b07bd6;">评论</span>'
+              : '<span class="badge badge-reported">帖子</span>';
+            const idCell = isComment
+              ? `<a href="#" onclick="event.preventDefault();openPostInAdmin(${r.post_id})" style="color:var(--accent);">评论 #${r.comment_id} (帖 #${r.post_id})</a>`
+              : `<a href="#" onclick="event.preventDefault();currentTab='posts';switchTab('posts');setFilter('reported')" style="color:var(--accent);">#${r.post_id}</a>`;
+            const actions = isComment
+              ? `<button class="action-sm" onclick="toggleHideComment(${r.comment_id})" style="color:var(--warning);">隐藏评论</button>
+                 <button class="action-sm" onclick="dismissCommentReport(${r.id})">忽略</button>`
+              : `<button class="action-sm" onclick="toggleHide(${r.post_id})" style="color:var(--warning);">隐藏帖子</button>
+                 <button class="action-sm" onclick="dismissReport(${r.id})">忽略</button>
+                 <button class="action-sm danger" onclick="deletePost(${r.post_id})">删除帖子</button>`;
+            return `
+            <tr>
+              <td>${badge}</td>
+              <td>${idCell}</td>
+              <td><span class="content-preview" title="${escapeHtml(r.content || '')}">${escapeHtml((r.content || '').substring(0, 40))}</span></td>
+              <td style="font-family:monospace;font-size:0.75rem;">${escapeHtml(r.report_ip || '')}</td>
+              <td>${escapeHtml(r.reason || '无')}</td>
+              <td>${(r.created_at || '').substring(0, 16)}</td>
+              <td>${actions}</td>
+            </tr>
+          `;
+          }).join('');
+        }
+      } catch (err) { document.getElementById('reports-tbody').innerHTML = '<tr><td colspan="7" class="empty-text">加载失败</td></tr>'; }
+      loader.innerHTML = '';
+    }
+
+    async function dismissReport(id) {
+      try {
+        const res = await fetch(`/api/admin/reports/${id}/dismiss`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) { const e = await res.json().catch(() => ({})); showToast(e.error || '操作失败', 'error'); return; }
+        showToast('已忽略', 'success'); loadReports();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function dismissCommentReport(id) {
+      try {
+        const res = await fetch(`/api/admin/comment-reports/${id}/dismiss`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) { const e = await res.json().catch(() => ({})); showToast(e.error || '操作失败', 'error'); return; }
+        showToast('已忽略', 'success'); loadReports();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function toggleHideComment(id) {
+      try {
+        const res = await fetch(`/api/admin/comments/${id}/hide`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.hidden ? '已隐藏评论' : '已取消隐藏评论', 'success');
+        loadReports();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    function openPostInAdmin(postId) {
+      currentTab = 'posts'; switchTab('posts');
+      const q = document.getElementById('admin-post-search');
+      if (q) { q.value = postId; }
+      searchAdminPosts(postId);
+    }
+
+    // ===== Ban =====
+    async function banIp() {
+      const ip = document.getElementById('ban-ip').value.trim();
+      const reason = document.getElementById('ban-reason').value.trim();
+      const days = document.getElementById('ban-days').value.trim();
+      if (!ip) { showToast('请输入 IP 地址', 'error'); return; }
+      try {
+        const body = { ip, reason };
+        if (days && parseInt(days) > 0) body.days = parseInt(days);
+        const res = await fetch('/api/admin/ban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('已封禁: ' + data.ip, 'success');
+          document.getElementById('ban-ip').value = '';
+          document.getElementById('ban-reason').value = '';
+          document.getElementById('ban-days').value = '';
+          loadBannedIps();
+        } else {
+          showToast(data.error || '封禁失败', 'error');
+        }
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function loadBannedIps() {
+      const tbody = document.getElementById('ban-tbody');
+      tbody.innerHTML = '<tr><td colspan="6"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></td></tr>';
+      try {
+        const res = await fetch('/api/admin/banned-ips', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.banned_ips && data.banned_ips.length > 0) {
+          tbody.innerHTML = data.banned_ips.map(b => {
+            const expiry = b.banned_until
+              ? b.banned_until.substring(0, 16)
+              : '<span style="color:var(--danger);">永久</span>';
+            return `
+              <tr>
+                <td>#${b.id}</td>
+                <td style="font-family:monospace;font-size:0.82rem;">${escapeHtml(b.ip)}</td>
+                <td>${escapeHtml(b.reason || '无')}</td>
+                <td>${expiry}</td>
+                <td>${(b.created_at || '').substring(0, 16)}</td>
+                <td><button class="action-sm" onclick="unbanIp(${b.id})" style="color:var(--success);">解封</button></td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-text">暂无封禁记录</td></tr>';
+        }
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">加载失败</td></tr>';
+      }
+    }
+
+    async function unbanIp(id) {
+      if (!confirm('确定要解封该 IP 吗？')) return;
+      try {
+        const res = await fetch(`/api/admin/ban/${id}/unban`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast('已解封: ' + data.ip, 'success');
+        loadBannedIps();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    // ===== Appeals =====
+    async function loadAppeals() {
+      const loader = document.getElementById('appeals-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch('/api/admin/appeals', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('appeals-tbody');
+        if (!data.appeals || data.appeals.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="empty-text">暂无申诉</td></tr>';
+        } else {
+          tbody.innerHTML = data.appeals.map(a => {
+            let statusBadge = '';
+            if (a.status === 'pending') statusBadge = '<span class="badge badge-reported">待处理</span>';
+            else if (a.status === 'approved') statusBadge = '<span style="color:var(--success);font-weight:600;">已通过</span>';
+            else if (a.status === 'rejected') statusBadge = '<span style="color:var(--danger);font-weight:600;">已拒绝</span>';
+
+            const typeLabel = a.appeal_type === 'password_reset'
+              ? '<span class="badge" style="background:rgba(29,155,240,0.15);color:var(--accent);">忘记密码</span>'
+              : a.appeal_type === 'other'
+              ? '<span class="badge" style="background:rgba(0,186,124,0.15);color:var(--success);">其他</span>'
+              : '<span class="badge badge-warning" style="background:rgba(243,156,18,0.15);">占用姓名</span>';
+
+            let actions = '';
+            if (a.status === 'pending') {
+              if (a.appeal_type === 'password_reset') {
+                actions += `<button class="action-sm" onclick="resetPassword(${a.id})" style="color:var(--accent);">重置密码</button>`;
+              }
+              if (a.appeal_type === 'name_dispute') {
+                actions += `<span style="font-size:0.72rem;color:var(--text-muted);margin:0 4px;" title="请加微信 SapereAude_Tintin 核实身份后，再点击封禁占用者">🔒 需微信核实</span>`;
+                actions += `<button class="action-sm" onclick="banOccupier(${a.id})" style="color:var(--danger);border-color:var(--danger);">封禁占用者</button>`;
+              }
+              if (a.appeal_type === 'other') {
+                actions += `<button class="action-sm" onclick="approveAppeal(${a.id})" style="color:var(--success);">通过</button>`;
+              }
+              actions += `<button class="action-sm danger" onclick="rejectAppeal(${a.id})">拒绝</button>`;
+            }
+
+            return `
+              <tr>
+                <td>#${a.id}</td>
+                <td>${a.year}</td>
+                <td>${a.class_number}</td>
+                <td>${escapeHtml(a.name)}</td>
+                <td>${typeLabel}</td>
+                <td>${escapeHtml(a.reason || '无')}</td>
+                <td>${statusBadge}</td>
+                <td>${(a.created_at || '').substring(0, 16)}</td>
+                <td>${actions}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        document.getElementById('appeals-tbody').innerHTML = '<tr><td colspan="9" class="empty-text">加载失败</td></tr>';
+      }
+      loader.innerHTML = '';
+    }
+
+    async function approveAppeal(id) {
+      try {
+        const res = await fetch(`/api/admin/appeals/${id}/approve`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.message || '申诉已通过', 'success');
+        loadAppeals();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function banOccupier(id) {
+      if (!confirm('确定要封禁占用者吗？\n\n此操作将：\n1. 永久封禁占用者的账号\n2. 封禁占用者最近发帖的IP地址\n3. 通知占用者和申诉者双方\n\n请确保已通过微信核实申诉者身份。')) return;
+      try {
+        const res = await fetch(`/api/admin/appeals/${id}/approve-name-dispute`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || '占用者已封禁', 'success');
+          loadAppeals();
+        } else {
+          showToast(data.error || '操作失败', 'error');
+        }
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function rejectAppeal(id) {
+      try {
+        const res = await fetch(`/api/admin/appeals/${id}/reject`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.message || '申诉已拒绝', 'success');
+        loadAppeals();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function resetPassword(id) {
+      if (!confirm('确定要重置该用户的密码吗？新密码将随机生成。')) return;
+      try {
+        const res = await fetch(`/api/admin/appeals/${id}/reset-password`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('密码已重置！\n\n新密码：' + data.newPassword + '\n\n请将该密码告知用户，并提醒登录后尽快修改。');
+          showToast('密码已重置', 'success');
+          loadAppeals();
+        } else {
+          showToast(data.error || '重置失败', 'error');
+        }
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    // ===== Banned Users =====
+    async function loadBannedUsers() {
+      const loader = document.getElementById('users-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch('/api/admin/banned-users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('users-tbody');
+        if (!data.users || data.users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-text">暂无封禁用户</td></tr>';
+        } else {
+          tbody.innerHTML = data.users.map(u => {
+            let banExpiry = u.banned_until
+              ? u.banned_until.substring(0, 16)
+              : '<span style="color:var(--danger);">永久封禁</span>';
+            return `
+              <tr>
+                <td>#${u.id}</td>
+                <td>${u.year}</td>
+                <td>${u.class_number}</td>
+                <td>${escapeHtml(u.name)}</td>
+                <td>${escapeHtml(u.ban_reason || '无')}</td>
+                <td>${banExpiry}</td>
+                <td><button class="action-sm" onclick="unbanUser(${u.id})" style="color:var(--success);">解禁</button></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        document.getElementById('users-tbody').innerHTML = '<tr><td colspan="7" class="empty-text">加载失败</td></tr>';
+      }
+      loader.innerHTML = '';
+    }
+
+    async function unbanUser(id) {
+      if (!confirm('确定要解禁该用户吗？')) return;
+      try {
+        const res = await fetch(`/api/admin/users/${id}/unban`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.message || '用户已解禁', 'success');
+        loadBannedUsers();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    // ===== Verifications =====
+    async function loadVerifications() {
+      const loader = document.getElementById('verifications-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+
+      try {
+        const res = await fetch('/api/admin/verifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        const tbody = document.getElementById('verifications-tbody');
+        tbody.innerHTML = '';
+
+        if (!data.requests || data.requests.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="empty-text">暂无认证申请</td></tr>';
+        } else {
+          data.requests.forEach(r => {
+            const time = r.created_at ? r.created_at.substring(0, 16) : '';
+            const statusBadge = r.status === 'approved' ? '<span class="badge" style="background:var(--success);color:#fff;">已通过</span>'
+              : r.status === 'rejected' ? '<span class="badge" style="background:var(--danger);color:#fff;">已拒绝</span>'
+              : '<span class="badge" style="background:var(--warning);color:#fff;">待审核</span>';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>#${r.id}</td>
+              <td>${escapeHtml(r.name || '?')}</td>
+              <td>${r.year || '?'}</td>
+              <td>${r.class_number || '?'}</td>
+              <td>${escapeHtml(r.org_name)}</td>
+              <td>${escapeHtml(r.role || '-')}</td>
+              <td>${escapeHtml(r.reason || '-')}</td>
+              <td>${time}</td>
+              <td>${statusBadge}
+                ${r.status === 'pending' ? `
+                  <button class="action-sm" style="background:var(--success);color:#fff;" onclick="approveVer(${r.id})">通过</button>
+                  <button class="action-sm danger" onclick="rejectVer(${r.id})">拒绝</button>
+                ` : ''}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        document.getElementById('verifications-tbody').innerHTML = '<tr><td colspan="9" class="empty-text">加载失败</td></tr>';
+      }
+
+      loader.innerHTML = '';
+    }
+
+    async function approveVer(id) {
+      const label = prompt('设置认证标签（如：学生会宣传部）：');
+      if (label === null) return;
+      try {
+        const res = await fetch(`/api/admin/verifications/${id}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ label: label.trim() || '' })
+        });
+        const data = await res.json();
+        showToast(data.message || '已通过', 'success');
+        loadVerifications();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    async function rejectVer(id) {
+      if (!confirm('确定拒绝此认证申请？')) return;
+      try {
+        const res = await fetch(`/api/admin/verifications/${id}/reject`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        showToast(data.message || '已拒绝', 'success');
+        loadVerifications();
+      } catch (err) { showToast('操作失败', 'error'); }
+    }
+
+    // ===== Logs =====
+    async function loadLogs() {
+      const loader = document.getElementById('logs-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch('/api/admin/logs', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('logs-tbody');
+        if (!data.logs || data.logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-text">暂无日志</td></tr>';
+        } else {
+          const actionLabels = {
+            'ban_user': '封禁用户', 'unban_user': '解禁用户',
+            'ban_ip': '封禁IP', 'unban_ip': '解封IP',
+            'delete_post': '删除帖子', 'hide_post': '隐藏帖子', 'unhide_post': '取消隐藏',
+            'pin_post': '置顶', 'unpin_post': '取消置顶',
+            'approve_appeal': '通过申诉', 'reject_appeal': '拒绝申诉',
+            'reset_password': '重置密码', 'set_role': '设置角色',
+            'approve_verification': '通过认证', 'reject_verification': '拒绝认证'
+          };
+          tbody.innerHTML = data.logs.map(l => `
+            <tr>
+              <td>#${l.id}</td>
+              <td>${actionLabels[l.action] || l.action}</td>
+              <td>${escapeHtml(l.target_type || '')}</td>
+              <td>#${escapeHtml(l.target_id || '-')}</td>
+              <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(l.detail || '')}">${escapeHtml(l.detail || '')}</td>
+              <td>${(l.created_at || '').substring(0, 16)}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        document.getElementById('logs-tbody').innerHTML = '<tr><td colspan="6" class="empty-text">加载失败</td></tr>';
+      }
+      loader.innerHTML = '';
+    }
+
+    // ===== Messages =====
+    async function loadMessages() {
+      const loader = document.getElementById('messages-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch('/api/messages', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('messages-tbody');
+        if (!data.messages || data.messages.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-text">暂无留言</td></tr>';
+        } else {
+          tbody.innerHTML = data.messages.map(m => {
+            const replied = m.reply ? `<div style="font-size:0.8rem;color:var(--success);margin-bottom:4px;">✅ 已回复：${escapeHtml(m.reply)}</div>` : '';
+            return `
+            <tr>
+              <td>#${m.id}</td>
+              <td style="max-width:280px;word-break:break-word;">${escapeHtml(m.content)}</td>
+              <td>${escapeHtml(m.sender)}</td>
+              <td style="font-family:monospace;font-size:0.75rem;">${escapeHtml(m.ip || '')}</td>
+              <td>${(m.created_at || '').substring(0, 16)}</td>
+              <td style="min-width:220px;">
+                ${replied}
+                <div style="display:flex;gap:4px;">
+                  <input type="text" id="reply-input-${m.id}" class="form-input" placeholder="输入回复..." value="${m.reply ? escapeHtml(m.reply) : ''}" style="flex:1;padding:4px 8px;font-size:0.8rem;">
+                  <button class="action-sm" onclick="replyMessage(${m.id})">回复</button>
+                </div>
+              </td>
+              <td><button class="action-sm danger" onclick="deleteMessage(${m.id})">删除</button></td>
+            </tr>
+          `;
+          }).join('');
+        }
+      } catch (err) {
+        document.getElementById('messages-tbody').innerHTML = '<tr><td colspan="6" class="empty-text">加载失败</td></tr>';
+      }
+      loader.innerHTML = '';
+    }
+
+    async function replyMessage(id) {
+      const input = document.getElementById(`reply-input-${id}`);
+      if (!input) return;
+      const reply = input.value.trim();
+      if (!reply) { showToast('回复内容不能为空', 'error'); return; }
+      try {
+        const res = await fetch(`/api/messages/${id}/reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ reply })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || '回复失败', 'error'); return; }
+        showToast('回复已发送，留言者将收到通知', 'success');
+        loadMessages();
+      } catch (err) { showToast('回复失败', 'error'); }
+    }
+
+    async function deleteMessage(id) {
+      if (!confirm('确定要删除这条留言吗？')) return;
+      try {
+        const res = await fetch(`/api/messages/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.error || '删除失败', 'error');
+          return;
+        }
+        showToast('留言已删除', 'success');
+        loadMessages();
+      } catch (err) { showToast('删除失败', 'error'); }
+    }
+
+    // ===== Manage Users =====
+    let manageUsersPage = 1;
+    let manageUsersTotalPages = 1;
+    async function loadManageUsers(resetPage = true) {
+      if (resetPage) manageUsersPage = 1;
+      const loader = document.getElementById('manage-users-loader');
+      loader.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      const q = document.getElementById('admin-user-search')?.value?.trim() || '';
+      try {
+        const url = q
+          ? `/api/admin/manage-users?q=${encodeURIComponent(q)}&page=${manageUsersPage}`
+          : `/api/admin/manage-users?page=${manageUsersPage}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        manageUsersTotalPages = data.totalPages || 1;
+        const tbody = document.getElementById('manage-users-tbody');
+        if (!data.users || data.users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="10" class="empty-text">暂无用户</td></tr>';
+        } else {
+          const isFounderEl = document.getElementById('admin-role-badge');
+          const isFounder = isFounderEl && isFounderEl.textContent.includes('超级');
+          const isAdmin = isFounderEl && (isFounderEl.textContent.includes('超级') || isFounderEl.textContent.includes('管理员'));
+          tbody.innerHTML = data.users.map(u => {
+            const roleLabel = u.role === 'founder' ? '👑 超级管理员' : u.role === 'admin' ? '🛡️ 管理员' : '普通用户';
+            const verified = u.verified_label ? `✓ ${escapeHtml(u.verified_label)}` : (u.is_verified ? '✓ 已认证' : '');
+            const banned = u.is_banned ? '<span style="color:var(--danger);font-weight:600;">已封禁</span>' : '<span style="color:var(--success);">正常</span>';
+            let actions = '';
+            if (isAdmin) {
+              if (!u.is_banned) {
+                if (isFounder) {
+                  actions += `<button class="action-sm" onclick="setUserRole(${u.id}, '${u.role}')">角色</button>`;
+                }
+                actions += `<button class="action-sm danger" onclick="banUser(${u.id})">封禁</button>`;
+              } else {
+                actions += `<button class="action-sm" onclick="unbanUser(${u.id})" style="color:var(--success);">解禁</button>`;
+              }
+            }
+            return `
+              <tr>
+                <td>#${u.id}</td>
+                <td>${escapeHtml(u.name)}</td>
+                <td>${escapeHtml(u.nickname || '-')}</td>
+                <td>${u.year}届${u.class_number}班</td>
+                <td>${roleLabel}</td>
+                <td>${verified || '-'}</td>
+                <td>${banned}</td>
+                <td>${u.post_count}</td>
+                <td>${(u.created_at || '').substring(0, 10)}</td>
+                <td>${actions}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) { document.getElementById('manage-users-tbody').innerHTML = '<tr><td colspan="9" class="empty-text">加载失败</td></tr>'; }
+      loader.innerHTML = '';
+      // Pagination controls
+      const pagDiv = document.getElementById('manage-users-pagination');
+      if (pagDiv) {
+        if (manageUsersTotalPages > 1) {
+          pagDiv.style.display = 'flex';
+          pagDiv.innerHTML = `
+            <button class="action-sm" onclick="manageUsersPage>1 && (manageUsersPage--, loadManageUsers(false))" ${manageUsersPage<=1?'disabled':''}>‹ 上一页</button>
+            <span style="padding:0 12px;font-size:0.85rem;color:var(--text-muted);">第 ${manageUsersPage} / ${manageUsersTotalPages} 页</span>
+            <button class="action-sm" onclick="manageUsersPage<manageUsersTotalPages && (manageUsersPage++, loadManageUsers(false))" ${manageUsersPage>=manageUsersTotalPages?'disabled':''}>下一页 ›</button>
+          `;
+        } else {
+          pagDiv.style.display = 'none';
+        }
+      }
+    }
+
+    async function setUserRole(userId, currentRole) {
+      const roles = ['user', 'admin', 'founder'];
+      const labels = { user: '普通用户', admin: '管理员', founder: '超级管理员' };
+      const opts = roles.map(r => `${labels[r]}(${r})`).join(', ');
+      const newRole = prompt(`设置新角色: ${opts}`, currentRole);
+      if (!newRole || !roles.includes(newRole.trim())) {
+        if (newRole !== null) alert('无效的角色，请输入: user, admin, founder');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/admin/users/${userId}/set-role`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ role: newRole.trim() })
+        });
+        const data = await res.json();
+        if (res.ok) { showToast(data.message || '角色已更新', 'success'); loadManageUsers(); }
+        else showToast(data.error || '操作失败', 'error');
+      } catch { showToast('操作失败', 'error'); }
+    }
+
+    async function banUser(userId) {
+      const reason = prompt('封禁原因（可选）：') || '';
+      const daysInput = prompt('封禁天数（留空=永久）：');
+      const days = daysInput ? parseInt(daysInput) : 0;
+      if (daysInput && (isNaN(days) || days <= 0)) { alert('请输入有效的天数'); return; }
+      if (!confirm(`确定要封禁该用户${days > 0 ? ' ' + days + '天' : ' 永久'}？`)) return;
+      try {
+        const body = { reason };
+        if (days > 0) body.days = days;
+        const res = await fetch(`/api/admin/users/${userId}/ban`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok) { showToast(data.message || '用户已封禁', 'success'); loadManageUsers(); loadBannedUsers(); }
+        else showToast(data.error || '操作失败', 'error');
+      } catch { showToast('操作失败', 'error'); }
+    }
+
+    // ===== Helpers =====
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date();
+      const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+      if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== Boards Management =====
+    async function loadAdminBoards() {
+      try {
+        const res = await fetch('/api/admin/boards');
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.getElementById('admin-boards-list');
+        if (!data.boards || data.boards.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">暂无板块</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.boards.map(b => `
+          <tr>
+            <td>${b.id}</td>
+            <td style="font-size:1.3rem;">${escapeHtml(b.icon)}</td>
+            <td>${escapeHtml(b.name)}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.description)}</td>
+            <td>${formatTime(b.created_at)}</td>
+            <td>
+              <button onclick="deleteBoard(${b.id},'${escapeHtml(b.name).replace(/'/g,"\\'")}')" style="background:rgba(244,33,46,0.12);color:#e74c3c;border:1px solid rgba(244,33,46,0.3);border-radius:6px;padding:4px 10px;font-size:0.78rem;cursor:pointer;font-family:inherit;">🗑️ 删除</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) { console.error('Load boards error:', err); }
+    }
+
+    async function createBoard() {
+      const name = document.getElementById('board-create-name').value.trim();
+      const icon = document.getElementById('board-create-icon').value.trim() || '📌';
+      const desc = document.getElementById('board-create-desc').value.trim();
+      const msgEl = document.getElementById('board-create-msg');
+      msgEl.style.display = 'none';
+
+      if (!name) { msgEl.textContent = '请输入板块名称'; msgEl.style.color = 'var(--danger)'; msgEl.style.display = 'block'; return; }
+
+      try {
+        const res = await fetch('/api/admin/boards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, icon, description: desc })
+        });
+        const data = await res.json();
+        if (!res.ok) { msgEl.textContent = data.error || '创建失败'; msgEl.style.color = 'var(--danger)'; msgEl.style.display = 'block'; return; }
+        msgEl.textContent = '✅ 板块已创建'; msgEl.style.color = 'var(--success)'; msgEl.style.display = 'block';
+        document.getElementById('board-create-name').value = '';
+        document.getElementById('board-create-desc').value = '';
+        document.getElementById('board-create-icon').value = '';
+        loadAdminBoards();
+        setTimeout(() => { msgEl.style.display = 'none'; }, 2000);
+      } catch { msgEl.textContent = '网络错误'; msgEl.style.color = 'var(--danger)'; msgEl.style.display = 'block'; }
+    }
+
+    async function deleteBoard(boardId, boardName) {
+      if (!confirm(`确定删除板块「${boardName}」吗？\n\n该板块下的所有帖子将回到首页时间线。`)) return;
+      try {
+        const res = await fetch(`/api/admin/boards/${boardId}`, { method: 'DELETE' });
+        if (!res.ok) { const e = await res.json(); showToast(e.error || '删除失败', 'error'); return; }
+        showToast('板块已删除，帖子已回落首页', 'success');
+        loadAdminBoards();
+      } catch { showToast('删除失败', 'error'); }
+    }
+
+    function showToast(msg, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast' + (type ? ` ${type}` : '');
+      toast.style.display = 'block';
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

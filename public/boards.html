@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>板块 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .boards-page {
+      max-width: 700px; margin: 0 auto; padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .boards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+    .board-card {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      cursor: pointer; transition: all 0.15s;
+      text-decoration: none; color: inherit;
+    }
+    .board-card:hover { border-color: var(--accent); background: var(--bg-secondary); }
+    .board-card-icon {
+      font-size: 2.2rem; flex-shrink: 0; width: 48px; text-align: center; line-height: 1;
+    }
+    .board-card-info { flex: 1; min-width: 0; }
+    .board-card-name { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+    .board-card-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    @media (max-width: 600px) {
+      .boards-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" style="color:var(--text);text-decoration:none;font-weight:700;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">📋 板块</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="boards-page">
+    <div id="boards-grid" class="boards-grid">
+      <div class="spinner" style="display:inline-flex;padding:40px;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>
+    </div>
+    <div id="boards-empty" style="display:none;text-align:center;padding:60px 16px;color:var(--text-muted);">
+      <div style="font-size:3rem;margin-bottom:12px;">📋</div>
+      <p>板块建设中，敬请期待</p>
+    </div>
+  </div>
+
+  <script>
+    async function loadBoards() {
+      const grid = document.getElementById('boards-grid');
+      const empty = document.getElementById('boards-empty');
+      try {
+        const res = await fetch('/api/boards');
+        if (!res.ok) { showError(); return; }
+        const data = await res.json();
+        if (!data.boards || data.boards.length === 0) {
+          grid.style.display = 'none'; empty.style.display = 'block'; return;
+        }
+        grid.innerHTML = data.boards.map(b => `
+          <a href="/board?id=${b.id}" class="board-card">
+            <div class="board-card-icon">${escapeHtml(b.icon)}</div>
+            <div class="board-card-info">
+              <div class="board-card-name">${escapeHtml(b.icon)} ${escapeHtml(b.name)}</div>
+              <div class="board-card-desc">${escapeHtml(b.description)}</div>
+            </div>
+          </a>
+        `).join('');
+      } catch { showError(); }
+    }
+
+    function showError() {
+      document.getElementById('boards-grid').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">加载失败，请刷新重试</p>';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const d = document.createElement('div'); d.textContent = text;
+      return d.innerHTML;
+    }
+
+    loadBoards();
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

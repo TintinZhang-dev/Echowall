@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>帖子 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .post-page {
+      max-width: 600px; margin: 0 auto; padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+    }
+    .post-detail-card {
+      background: var(--card-bg); border-radius: var(--radius);
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .post-detail-card .post-card { border: none; border-radius: 0; }
+    .comments-section-detail {
+      border-top: 1px solid var(--border); padding: 12px 16px;
+    }
+    .comments-section-detail h3 {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;
+    }
+    .spinner-page {
+      text-align: center; padding: 60px 16px; color: var(--text-muted);
+    }
+    .spinner-page .spinner { display: inline-flex; }
+    .not-found { text-align: center; padding: 60px 16px; color: var(--text-muted); }
+    .not-found-icon { font-size: 3rem; margin-bottom: 12px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--accent); text-decoration: none; font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="#" class="back-link" onclick="if(document.referrer&&document.referrer.includes(location.origin)){history.back()}else{location.href='/'};return false;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">📄 帖子</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="post-page">
+    <div id="post-detail">
+      <div class="spinner-page"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Shared helpers (mirror from app.js) =====
+    function getToken() { return localStorage.getItem('token'); }
+    function authHeaders() {
+      // Token is in httpOnly cookie — same-origin fetch sends it automatically
+      return {};
+    }
+    function escapeHtml(text) {
+      if (!text) return '';
+      const d = document.createElement('div'); d.textContent = text;
+      return d.innerHTML;
+    }
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date(); const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff/60000)+' 分钟前';
+      if (diff < 86400000) return Math.floor(diff/3600000)+' 小时前';
+      if (diff < 604800000) return Math.floor(diff/86400000)+' 天前';
+      return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+    }
+    function avatarHtml(user, isAnonymous) {
+      if (!isAnonymous && user && user.avatar_type === 'custom' && user.avatar_url) {
+        return `<img src="${escapeHtml(user.avatar_url)}" class="avatar-img" alt="">`;
+      }
+      const displayName = user ? (user.nickname || user.name) : '';
+      const initial = displayName ? displayName[0] : '?';
+      const cls = isAnonymous ? 'avatar-anonymous' : (user ? 'avatar-initials' : 'avatar-anonymous');
+      return `<span class="avatar-circle ${cls}">${escapeHtml(initial)}</span>`;
+    }
+
+    // [2026-08-16] 等级徽章 + 昵称颜色 + 字体大小
+    function levelBadgeHtml(author) {
+      if (!author || !author.level) return '';
+      const color = author.level_color || '#9ca3af';
+      const emoji = author.level_emoji || '';
+      const name = author.level_name || '';
+      return `<span class="level-badge" style="color:${color};" title="Lv.${author.level} ${name}">Lv.${author.level} ${emoji}</span>`;
+    }
+    function nickColorStyle(author) {
+      return (author && author.nickname_color) ? `color:${author.nickname_color};` : '';
+    }
+    function applyFontSize(user) {
+      const map = { small: '0.85rem', medium: '0.95rem', large: '1.05rem' };
+      const size = user && user.font_size ? map[user.font_size] : null;
+      if (size) document.documentElement.style.setProperty('--post-font-size', size);
+      else document.documentElement.style.removeProperty('--post-font-size');
+    }
+    function showToast(msg, type) {
+      let t = document.getElementById('toast');
+      if (!t) {
+        t = document.createElement('div'); t.id='toast'; t.className='toast';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg; t.className = 'toast'+(type?' '+type:'');
+      t.style.display = 'block';
+      clearTimeout(t._t); t._t = setTimeout(() => t.style.display='none', 2500);
+    }
+
+    // [2026-08-04] 任务4: Helper to get media URLs from a post
+    function getMediaUrls(post) {
+      if (post.media_urls) {
+        try {
+          const arr = typeof post.media_urls === 'string' ? JSON.parse(post.media_urls) : post.media_urls;
+          if (Array.isArray(arr) && arr.length > 0) return arr;
+        } catch {}
+      }
+      if (post.media_url) return [post.media_url];
+      return [];
+    }
+
+    // [2026-08-04] 任务5: Lightweight Markdown rendering (security-first)
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+
+      // Extract code blocks (```...```) into placeholders
+      const codeBlocks = [];
+      html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+        return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+      });
+
+      // Inline code (`...`)
+      const inlineCodes = [];
+      html = html.replace(/`([^`]+)`/g, (_, code) => {
+        inlineCodes.push('<code>' + code + '</code>');
+        return '\x01IC' + (inlineCodes.length - 1) + '\x01';
+      });
+
+      // Bold, italic, strikethrough
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '<em>$2</em>');
+      html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+      // Links
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+
+      // Blockquotes
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+
+      // Paragraphs
+      const paragraphs = html.split(/\n\n+/);
+      html = paragraphs.map(p => {
+        p = p.trim(); if (!p) return '';
+        if (p.startsWith('<pre>') || p.startsWith('<blockquote>')) return p;
+        p = p.replace(/\n/g, '<br>');
+        return '<p>' + p + '</p>';
+      }).join('');
+
+      // Restore code blocks
+      html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)]);
+      html = html.replace(/\x01IC(\d+)\x01/g, (_, i) => inlineCodes[parseInt(i)]);
+
+      return html;
+    }
+
+    // [2026-08-04] 任务4: Render media grid
+    function renderMediaHtml(mediaUrls) {
+      if (!mediaUrls || mediaUrls.length === 0) return '';
+      if (mediaUrls.length === 1) {
+        const url = mediaUrls[0];
+        const isVid = /\.(mp4|webm|mov|avi)$/i.test(url);
+        if (isVid) {
+          return `<div class="post-media"><video src="${escapeHtml(url)}" controls preload="metadata"></video></div>`;
+        }
+        return `<div class="post-media"><img src="${escapeHtml(url)}" alt="图片" loading="lazy"></div>`;
+      }
+      // Grid layout
+      const cols = mediaUrls.length <= 2 ? 2 : 3;
+      return `<div class="post-media-grid" style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:4px;margin-bottom:8px;">${
+        mediaUrls.map(url => {
+          const isVid = /\.(mp4|webm|mov|avi)$/i.test(url);
+          if (isVid) {
+            return `<video src="${escapeHtml(url)}" controls preload="metadata" style="width:100%;max-height:250px;object-fit:cover;border-radius:4px;"></video>`;
+          }
+          return `<img src="${escapeHtml(url)}" alt="图片" loading="lazy" style="width:100%;height:160px;object-fit:cover;border-radius:4px;">`;
+        }).join('')
+      }</div>`;
+    }
+
+    let currentUser = null;
+    let currentPost = null;
+
+    // Get post ID from URL
+    const pathParts = window.location.pathname.split('/');
+    const postId = parseInt(pathParts[pathParts.length - 1]) || 0;
+
+    async function init() {
+      // Check auth
+      try {
+        const r = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (r.ok) { const d = await r.json(); currentUser = d.user; applyFontSize(currentUser); }
+      } catch {}
+      if (!postId) { showNotFound(); return; }
+      await loadPost();
+    }
+
+    async function loadPost() {
+      const container = document.getElementById('post-detail');
+      try {
+        const fv = currentUser && currentUser.role === 'founder' ? '?founder_view=1' : '';
+        const res = await fetch(`/api/posts/${postId}${fv}`, { headers: authHeaders() });
+        if (!res.ok) { showNotFound(); return; }
+        const data = await res.json();
+        currentPost = data.post;
+        renderDetail(data.post);
+      } catch (err) {
+        container.innerHTML = '<div class="not-found"><div class="not-found-icon">😵</div><p>加载失败</p><a href="/" style="color:var(--accent);">返回首页</a></div>';
+      }
+    }
+
+    function showNotFound() {
+      document.getElementById('post-detail').innerHTML = `
+        <div class="not-found"><div class="not-found-icon">🔍</div><p>帖子不存在或已被删除</p><a href="/" style="color:var(--accent);">返回首页</a></div>`;
+    }
+
+    function renderDetail(post) {
+      const catMap = {
+        'confession':'💕 表白', 'blessing':'🎉 祝福', 'fun':'😄 整活',
+        'activity':'📢 活动', 'rant':'💬 吐槽', 'advice':'💡 建议',
+        'question':'❓ 求助', 'other':'不分类', 'sports':'⚽ 体育',
+        'daily':'☀️ 日常', 'water':'🌊 每日一水', 'treehole':'🌳 树洞',
+        'friends':'🤝 交友' // [2026-08-16] 树洞/交友分类
+      };
+      const catBadge = post.category ? `<span class="cat-badge">${catMap[post.category]||'不分类'}</span>` : '';
+
+      // Author block
+      let authorHtml = '';
+      if (post.is_anonymous) {
+        const anonName = post.real_author ? escapeHtml(post.real_author.nickname || post.real_author.name) : '匿名';
+        const anonBadge = post.real_author ? '<span style="font-size:0.68rem;color:var(--accent);margin-left:4px;">👁️ 已解密</span>' : '';
+        const anonDetail = post.real_author ? `<span class="post-author-info">${post.real_author.year}届${post.real_author.class_number}班</span>` : '';
+        const anonStyle = post.real_author ? '' : 'color:var(--text-muted);';
+        const anonAvatar = post.real_author
+          ? `<a href="/user/${post.real_author.id}" style="text-decoration:none;color:inherit;">${avatarHtml(post.real_author, true)}</a>`
+          : avatarHtml(null, true);
+        authorHtml = `
+          <div class="post-card-top">
+            <div class="post-avatar-col">${anonAvatar}</div>
+            <div class="post-body-col">
+              <div class="post-meta">
+                ${catBadge}
+                <span class="post-author-name" style="${anonStyle}">${anonName}${anonBadge}</span>
+                ${anonDetail}
+                <span class="post-time">${formatTime(post.created_at)}</span>
+                ${post.pinned ? '<span class="pin-badge">📌 置顶</span>' : ''}
+              </div>
+            </div>
+          </div>`;
+      } else if (post.author) {
+        const dn = post.author.nickname || post.author.name;
+        authorHtml = `
+          <div class="post-card-top">
+            <div class="post-avatar-col"><a href="/user/${post.author.id}" style="text-decoration:none;color:inherit;">${avatarHtml(post.author)}</a></div>
+            <div class="post-body-col">
+              <div class="post-meta">
+                ${catBadge}
+                <span class="post-author-name"><span style="${nickColorStyle(post.author)}">${escapeHtml(dn)}</span>${levelBadgeHtml(post.author)}${post.author.verified_label ? '<span class="verify-badge" title="'+escapeHtml(post.author.verified_label)+'">✅</span>' : ''}</span>
+                <span class="post-author-info">${post.author.is_external ? (post.author.school ? '外校 · '+escapeHtml(post.author.school) : '外校') : post.author.year+'届'+post.author.class_number+'班'}${post.author.verified_label?' · '+escapeHtml(post.author.verified_label):''}</span>
+                <span class="post-time">${formatTime(post.created_at)}</span>
+                ${post.pinned ? '<span class="pin-badge">📌 置顶</span>' : ''}
+              </div>
+            </div>
+          </div>`;
+      } else {
+        authorHtml = `
+          <div class="post-card-top">
+            <div class="post-avatar-col">${avatarHtml(null, true)}</div>
+            <div class="post-body-col">
+              <div class="post-meta">
+                ${catBadge}
+                <span class="post-author-name" style="color:var(--text-muted);">匿名</span>
+                <span class="post-time">${formatTime(post.created_at)}</span>
+                ${post.pinned ? '<span class="pin-badge">📌 置顶</span>' : ''}
+              </div>
+            </div>
+          </div>`;
+      }
+
+      // [2026-08-07] Repost refactor: full-content repost card in detail page
+      let repostHtml = '';
+      if (post.repost_of && post.repost_original) {
+        const orig = post.repost_original;
+        const origMD = renderMarkdown(orig.content || '');
+        const origPreview = renderMarkdown((orig.content || '').slice(0, 300));
+        let origContentHtml = origMD;
+        let origCollapseBtn = '';
+        if ((orig.content || '').length > 300) {
+          origContentHtml = `<span class="post-content-preview">${origPreview}…</span>`;
+          origCollapseBtn = `<button class="btn btn-link collapse-btn" onclick="toggleDetailRepostContent()" id="repost-collapse-btn-detail">展开全文 ▾</button>`;
+          origContentHtml += `<span id="repost-content-full-detail" style="display:none">${origMD}</span>`;
+        }
+        // Original media
+        let origMediaHtml = '';
+        let origDocxHtml = '';
+        if (post.repost_media_urls) {
+          origMediaHtml = renderMediaHtml(getMediaUrls({ media_urls: post.repost_media_urls, media_url: post.repost_media_url }));
+        }
+        if (orig && orig.docx_url) origDocxHtml = renderDocxCard(orig);
+        // Original poll
+        let origPollHtml = '';
+        if (post.repost_poll) {
+          const rp = post.repost_poll;
+          const tv = rp.total_votes || 0;
+          const hv = rp.my_vote !== null && rp.my_vote !== undefined;
+          origPollHtml = '<div class="poll-container" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;background:var(--bg-secondary);">';
+          origPollHtml += `<div style="font-weight:700;font-size:0.9rem;margin-bottom:8px;">📊 ${escapeHtml(rp.question)}</div><div style="display:flex;flex-direction:column;gap:6px;">`;
+          for (const opt of rp.options) {
+            const pct = tv > 0 ? Math.round((opt.vote_count || 0) / tv * 100) : 0;
+            const imv = rp.my_vote === opt.id;
+            if (hv) {
+              origPollHtml += `<div style="position:relative;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);overflow:hidden;cursor:default;">
+                <div style="position:absolute;top:0;left:0;bottom:0;background:${imv?'rgba(29,155,240,0.2)':'rgba(29,155,240,0.08)'};width:${pct}%;transition:width 0.3s;border-radius:6px;"></div>
+                <div style="position:relative;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">
+                <span>${escapeHtml(opt.text)}${imv?' ✓':''}</span>
+                <span style="font-weight:600;color:var(--text-muted);">${pct}% (${opt.vote_count||0}票)</span></div></div>`;
+            } else {
+              origPollHtml += `<button class="poll-vote-btn" onclick="votePoll(${orig.id},${opt.id})"
+                style="display:block;width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text);cursor:pointer;font-size:0.85rem;font-family:inherit;text-align:left;transition:all 0.15s;"
+                onmouseenter="this.style.borderColor='var(--accent)';this.style.background='rgba(29,155,240,0.06)';"
+                onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--card-bg)';">${escapeHtml(opt.text)}</button>`;
+            }
+          }
+          origPollHtml += '</div>';
+          origPollHtml += `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;">共 ${tv} 票</div></div>`;
+        }
+        repostHtml = `<div class="repost-header" style="font-size:0.85rem;color:var(--accent);margin-bottom:6px;font-weight:600;">
+          🔁 ${escapeHtml((post.author && (post.author.nickname || post.author.name)) || '用户')} 转发了
+        </div>
+        <div class="repost-card" style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;background:var(--bg-secondary);cursor:pointer;" onclick="window.location='/post/${orig.id}'">
+          <div class="repost-quote-content" id="repost-content-detail">${origContentHtml}</div>
+          ${origCollapseBtn}
+          ${origMediaHtml}
+          ${origPollHtml}
+          <div style="font-size:0.78rem;color:var(--accent);margin-top:6px;">查看原帖 →</div>
+        </div>`;
+      } else if (post.repost_of) {
+        // Legacy fallback
+        const repostRaw = post.repost_content || '';
+        const repostMD = renderMarkdown(repostRaw);
+        let repostContentHtml = repostMD;
+        let repostCollapseBtn = '';
+        if (repostRaw.length > 300) {
+          const previewMD = renderMarkdown(repostRaw.slice(0, 300));
+          repostContentHtml = `<span class="post-content-preview">${previewMD}…</span>`;
+          repostCollapseBtn = `<button class="btn btn-link collapse-btn" onclick="toggleDetailRepostContent()" id="repost-collapse-btn-detail">展开全文 ▾</button>`;
+          repostContentHtml += `<span id="repost-content-full-detail" style="display:none">${repostMD}</span>`;
+        }
+        repostHtml = `<div class="repost-quote">
+          <div class="repost-quote-author">@${escapeHtml(post.repost_author||'用户')}</div>
+          <div class="repost-quote-content" id="repost-content-detail">${repostContentHtml}</div>
+          ${repostCollapseBtn}
+          ${post.repost_media_url ? (() => {
+            const repostUrls = post.repost_media_urls ? (() => { try { const a = typeof post.repost_media_urls === 'string' ? JSON.parse(post.repost_media_urls) : post.repost_media_urls; if (Array.isArray(a)) return a; } catch {} return [post.repost_media_url]; })() : [post.repost_media_url];
+            const iv = /\.(mp4|webm|mov|avi)$/i.test(repostUrls[0]);
+            const badge = repostUrls.length > 1 ? `<span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.65rem;padding:1px 5px;border-radius:8px;">${repostUrls.length}图</span>` : '';
+            return iv ? `<div style="position:relative;"><video src="${escapeHtml(repostUrls[0])}" controls preload="metadata" style="max-height:200px;border-radius:8px;margin-top:6px;"></video>${badge}</div>`
+              : `<div style="position:relative;"><img src="${escapeHtml(repostUrls[0])}" alt="转发图片" loading="lazy" style="max-height:200px;border-radius:8px;margin-top:6px;">${badge}</div>`;
+          })() : ''}
+        </div>`;
+      }
+
+      // [2026-08-04] 任务4: Media — multi-image support
+      const mediaHtml = renderMediaHtml(getMediaUrls(post));
+
+      // [2026-08-31] Word 文档附件卡片
+      function renderDocxCard(post) {
+        if (!post || !post.docx_url) return '';
+        const name = post.docx_name || '文档.docx';
+        return '<div class="docx-card"><span class="docx-icon">📄</span><span class="docx-name" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span><a class="docx-dl" href="' + escapeHtml(post.docx_url) + '" rel="noopener noreferrer" target="_blank">下载 ⬇</a></div>';
+      }
+
+      // [2026-08-03] 任务5: Poll rendering
+      let pollHtml = '';
+      if (post.poll) {
+        const poll = post.poll;
+        const totalVotes = poll.total_votes || 0;
+        const hasVoted = poll.my_vote !== null && poll.my_vote !== undefined;
+        pollHtml = '<div class="poll-container" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;background:var(--bg-secondary);">';
+        pollHtml += `<div style="font-weight:700;font-size:0.9rem;margin-bottom:8px;">📊 ${escapeHtml(poll.question)}</div>`;
+        pollHtml += '<div style="display:flex;flex-direction:column;gap:6px;">';
+        for (const opt of poll.options) {
+          const pct = totalVotes > 0 ? Math.round((opt.vote_count || 0) / totalVotes * 100) : 0;
+          const isMyVote = poll.my_vote === opt.id;
+          if (hasVoted) {
+            pollHtml += `<div style="position:relative;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);overflow:hidden;cursor:default;">
+              <div style="position:absolute;top:0;left:0;bottom:0;background:${isMyVote?'rgba(29,155,240,0.2)':'rgba(29,155,240,0.08)'};width:${pct}%;transition:width 0.3s;border-radius:6px;"></div>
+              <div style="position:relative;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">
+                <span>${escapeHtml(opt.text)}${isMyVote?' ✓':''}</span>
+                <span style="font-weight:600;color:var(--text-muted);">${pct}% (${opt.vote_count||0}票)</span>
+              </div></div>`;
+          } else {
+            pollHtml += `<button class="poll-vote-btn" onclick="votePoll(${post.id},${opt.id})"
+              style="display:block;width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text);cursor:pointer;font-size:0.85rem;font-family:inherit;text-align:left;transition:all 0.15s;"
+              onmouseenter="this.style.borderColor='var(--accent)';this.style.background='rgba(29,155,240,0.06)';"
+              onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--card-bg)';">${escapeHtml(opt.text)}</button>`;
+          }
+        }
+        pollHtml += '</div>';
+        pollHtml += `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;">共 ${totalVotes} 票</div>`;
+        pollHtml += '</div>';
+      }
+
+      const likedClass = post.user_liked ? ' liked' : '';
+
+      // [2026-08-04] 任务5: Long content auto-collapse with Markdown
+      const MAX_CONTENT_LEN = 300;
+      const rawContent = post.content || '';
+      const markdownFull = renderMarkdown(rawContent);
+      let contentHtml = markdownFull;
+      let collapseBtn = '';
+      if (rawContent.length > MAX_CONTENT_LEN) {
+        const previewMD = renderMarkdown(rawContent.slice(0, MAX_CONTENT_LEN));
+        contentHtml = `<span class="post-content-preview">${previewMD}…</span>`;
+        collapseBtn = `<button class="btn btn-link collapse-btn" onclick="toggleDetailContent()" id="collapse-btn-detail">展开全文 ▾</button>`;
+        contentHtml += `<span id="post-content-full-detail" style="display:none">${markdownFull}</span>`;
+      }
+
+      // [2026-08-07] Likes list (author only)
+      let likesHtml = '';
+      if (post.likes && post.likes.length > 0) {
+        const likesList = post.likes.map(l =>
+          `<a href="/user/${l.id}" style="color:var(--accent);text-decoration:none;">${escapeHtml(l.nickname || l.name)}</a>`
+        ).join('、');
+        likesHtml = `<div class="post-likes-section" style="margin-top:10px;padding:10px 0;border-top:1px solid var(--border);">
+          <details><summary style="cursor:pointer;color:var(--text-muted);font-size:0.85rem;font-weight:600;">❤️ ${post.likes.length} 人赞了</summary>
+          <div style="font-size:0.85rem;padding:8px 0;line-height:1.8;">${likesList}</div></details>
+        </div>`;
+      }
+
+      document.getElementById('post-detail').innerHTML = `
+        <div class="post-detail-card">
+          <div class="post-card${post.pinned?' pinned':''}" id="post-${post.id}">
+            ${authorHtml}
+            ${repostHtml}
+            <div class="post-content" id="post-content-detail">${contentHtml}</div>
+            ${collapseBtn}
+            ${mediaHtml}
+            ${renderDocxCard(post)}
+            ${pollHtml}
+            ${likesHtml}
+            <div class="post-actions">
+              <button class="action-btn${likedClass}" onclick="toggleLike(${post.id})" id="like-btn-${post.id}">
+                <span class="action-icon">❤️</span> <span id="like-count-${post.id}">${post.like_count||0}</span>
+              </button>
+              <button class="action-btn">
+                <span class="action-icon">💬</span> <span>${post.comment_count||0}</span>
+              </button>
+              <button class="action-btn" onclick="repostPost(${post.id})">
+                <span class="action-icon">🔁</span> <span id="repost-count-${post.id}">${post.repost_count||0}</span>
+              </button>
+              <button class="action-btn" onclick="openReportModal(${post.id})">
+                <span class="action-icon">🚩</span>
+              </button>
+              ${post.pinned && currentUser && (post.user_id === currentUser.id || currentUser.role === 'founder' || currentUser.role === 'admin') ? '<button class="action-btn" onclick="unpinPost('+post.id+')" title="取消置顶" style="color:var(--accent);"><span class="action-icon">📌</span></button>' : ''}
+              ${currentUser && post.user_id === currentUser.id ? '<button class="action-btn" onclick="deletePost('+post.id+')" style="color:var(--danger);"><span class="action-icon">🗑️</span></button>' : ''}
+            </div>
+          </div>
+          <div class="comments-section-detail">
+            <h3>💬 评论 (${post.comment_count||0})</h3>
+            <div id="comments-list"></div>
+            <div id="comment-input-area" style="${currentUser?'':'display:none;'}" class="comment-input-area" style="margin-top:12px;">
+              <input type="text" class="comment-input" id="comment-input" placeholder="写评论..." maxlength="500">
+              <label class="comment-anon-label" title="匿名评论，其他人看不到你的名字">
+                <input type="checkbox" id="comment-anon" class="comment-anon-check"> 匿名
+              </label>
+              <button class="comment-submit" onclick="submitComment()">发送</button>
+            </div>
+            ${currentUser?'': '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0;"><a href="/login" style="color:var(--accent);">登录</a> 后才能评论</p>'}
+          </div>
+        </div>`;
+
+      // Load comments
+      loadComments();
+    }
+
+    // ===== Like =====
+    // Long content collapse toggle (detail page)
+    function toggleDetailContent() {
+      const contentEl = document.getElementById('post-content-detail');
+      const btn = document.getElementById('collapse-btn-detail');
+      if (!contentEl || !btn) return;
+      const fullEl = document.getElementById('post-content-full-detail');
+      const previewEl = contentEl.querySelector('.post-content-preview');
+      if (fullEl && previewEl) {
+        // [2026-08-04] 任务5: fullEl.innerHTML is already rendered Markdown
+        contentEl.innerHTML = fullEl.innerHTML;
+        btn.textContent = '收起 ▲';
+        fullEl.remove();
+      } else {
+        btn.textContent = '展开全文 ▾';
+      }
+    }
+
+    // Long repost content collapse toggle (detail page)
+    function toggleDetailRepostContent() {
+      const contentEl = document.getElementById('repost-content-detail');
+      const btn = document.getElementById('repost-collapse-btn-detail');
+      if (!contentEl || !btn) return;
+      const fullEl = document.getElementById('repost-content-full-detail');
+      const previewEl = contentEl.querySelector('.post-content-preview');
+      if (fullEl && previewEl) {
+        // [2026-08-04] 任务5: fullEl.innerHTML is already rendered Markdown
+        contentEl.innerHTML = fullEl.innerHTML;
+        btn.textContent = '收起 ▲';
+        fullEl.remove();
+      } else {
+        btn.textContent = '展开全文 ▾';
+      }
+    }
+
+    async function toggleLike(postId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/like`, { method:'POST', headers:authHeaders() });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'操作失败','error'); return; }
+        const d = await res.json();
+        const el = document.getElementById(`like-count-${postId}`);
+        const btn = document.getElementById(`like-btn-${postId}`);
+        if (el) el.textContent = d.count;
+        if (btn) btn.classList.toggle('liked', d.liked);
+      } catch { showToast('操作失败','error'); }
+    }
+
+    // ===== Repost =====
+    async function repostPost(postId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/repost`, { method:'POST', headers:authHeaders() });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'转发失败','error'); return; }
+        const d = await res.json();
+        const el = document.getElementById(`repost-count-${postId}`);
+        if (el) el.textContent = d.repost_count;
+        showToast('已转发','success');
+      } catch { showToast('转发失败','error'); }
+    }
+
+    // ===== Delete =====
+    async function deletePost(postId) {
+      if (!confirm('确定删除？')) return;
+      try {
+        const res = await fetch(`/api/posts/${postId}/delete`, { method:'POST', headers:authHeaders() });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'删除失败','error'); return; }
+        showToast('已删除','success');
+        setTimeout(() => window.location.href='/', 1000);
+      } catch { showToast('删除失败','error'); }
+    }
+
+    // [2026-08-09] Unpin — author or admin/founder
+    async function unpinPost(postId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      if (!confirm('确定取消置顶这条帖子？')) return;
+      try {
+        const res = await fetch(`/api/posts/${postId}/unpin`, { method:'POST', headers:authHeaders() });
+        const d = await res.json();
+        if (!res.ok) { showToast(d.error||'取消失败','error'); return; }
+        showToast('已取消置顶','success');
+        loadPost();
+      } catch { showToast('取消失败','error'); }
+    }
+
+    // ===== Report Modal (simplified) =====
+    let reportPostId = null;
+    function openReportModal(postId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      reportPostId = postId;
+      const m = document.getElementById('report-modal');
+      if (m) { m.style.display = 'flex'; return; }
+      // Create on the fly
+      const html = `
+        <div id="report-modal" class="modal" style="display:flex;">
+          <div class="modal-backdrop" onclick="closeReportModal()"></div>
+          <div class="modal-content">
+            <div class="modal-header"><h2>举报帖子</h2><button class="modal-close" onclick="closeReportModal()">&times;</button></div>
+            <div class="modal-body">
+              <label class="form-label">举报原因</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;font-size:0.85rem;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="辱骂/人身攻击" style="accent-color:var(--accent);">辱骂/人身攻击</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="谣言/不实信息" style="accent-color:var(--accent);">谣言/不实信息</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="泄露他人隐私" style="accent-color:var(--accent);">泄露他人隐私</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="广告/垃圾内容" style="accent-color:var(--accent);">广告/垃圾内容</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--warning);"><input type="radio" name="report-reason-opt" value="涉及自己" style="accent-color:var(--warning);">涉及自己（将立即隐藏）</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="其他" checked style="accent-color:var(--accent);">其他</label>
+              </div>
+              <textarea id="report-reason" class="form-textarea" rows="2" placeholder="补充说明（可选）"></textarea>
+              <div class="btn-group" style="margin-top:12px;">
+                <button class="btn btn-secondary" onclick="closeReportModal()">取消</button>
+                <button class="btn btn-danger" onclick="submitReport()">确认举报</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeReportModal() {
+      const m = document.getElementById('report-modal');
+      if (m) m.style.display = 'none';
+    }
+    async function submitReport() {
+      const opt = document.querySelector('input[name="report-reason-opt"]:checked');
+      const optValue = opt ? opt.value : '其他';
+      const involvesMe = optValue === '涉及自己';
+      const details = ((document.getElementById('report-reason') || {}).value || '').trim() || '';
+      if (involvesMe && !details) { showToast('请补充说明你与该内容的关系', 'error'); return; }
+      const reason = involvesMe ? '涉及自己' + (details ? '：' + details : '') : (optValue + (details ? '：' + details : ''));
+      try {
+        const res = await fetch(`/api/posts/${reportPostId}/report`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...authHeaders()},
+          body: JSON.stringify({reason, involves_me: involvesMe})
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'举报失败','error'); return; }
+        closeReportModal(); showToast('举报成功','success');
+      } catch { showToast('举报失败','error'); }
+    }
+
+    // ===== Comment Report =====
+    let reportCommentId = null;
+    function openCommentReportModal(commentId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      reportCommentId = commentId;
+      const m = document.getElementById('comment-report-modal');
+      if (m) { m.style.display = 'flex'; return; }
+      const html = `
+        <div id="comment-report-modal" class="modal" style="display:flex;">
+          <div class="modal-backdrop" onclick="closeCommentReportModal()"></div>
+          <div class="modal-content">
+            <div class="modal-header"><h2>举报评论</h2><button class="modal-close" onclick="closeCommentReportModal()">&times;</button></div>
+            <div class="modal-body">
+              <label class="form-label">举报原因</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;font-size:0.85rem;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="comment-report-opt" value="辱骂/人身攻击" style="accent-color:var(--accent);">辱骂/人身攻击</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="comment-report-opt" value="谣言/不实信息" style="accent-color:var(--accent);">谣言/不实信息</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="comment-report-opt" value="泄露他人隐私" style="accent-color:var(--accent);">泄露他人隐私</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="comment-report-opt" value="广告/垃圾内容" style="accent-color:var(--accent);">广告/垃圾内容</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--warning);"><input type="radio" name="comment-report-opt" value="涉及自己" style="accent-color:var(--warning);">涉及自己（将立即隐藏）</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="comment-report-opt" value="其他" checked style="accent-color:var(--accent);">其他</label>
+              </div>
+              <textarea id="comment-report-reason" class="form-textarea" rows="2" placeholder="补充说明（可选）"></textarea>
+              <div class="btn-group" style="margin-top:12px;">
+                <button class="btn btn-secondary" onclick="closeCommentReportModal()">取消</button>
+                <button class="btn btn-danger" onclick="submitCommentReport()">确认举报</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeCommentReportModal() {
+      const m = document.getElementById('comment-report-modal');
+      if (m) m.style.display = 'none';
+    }
+    async function submitCommentReport() {
+      const opt = document.querySelector('input[name="comment-report-opt"]:checked');
+      const optValue = opt ? opt.value : '其他';
+      const involvesMe = optValue === '涉及自己';
+      const details = ((document.getElementById('comment-report-reason') || {}).value || '').trim() || '';
+      if (involvesMe && !details) { showToast('请补充说明你与该内容的关系', 'error'); return; }
+      const reason = involvesMe ? '涉及自己' + (details ? '：' + details : '') : (optValue + (details ? '：' + details : ''));
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments/${reportCommentId}/report`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...authHeaders()},
+          body: JSON.stringify({reason, involves_me: involvesMe})
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'举报失败','error'); return; }
+        closeCommentReportModal(); showToast('举报成功','success');
+      } catch { showToast('举报失败','error'); }
+    }
+
+    // ===== Comments =====
+    async function loadComments() {
+      const list = document.getElementById('comments-list');
+      list.innerHTML = '<div class="spinner" style="display:inline-flex;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments`, { headers:authHeaders() });
+        const data = await res.json();
+        if (!data.comments || data.comments.length === 0) {
+          list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:16px 0;text-align:center;">暂无评论</p>';
+          return;
+        }
+        list.innerHTML = data.comments.map(c => renderComment(c)).join('');
+      } catch {
+        list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:16px 0;text-align:center;">加载评论失败</p>';
+      }
+    }
+
+    function renderComment(c) {
+      const isAnon = c.is_anonymous === 1 || c.is_anonymous === '1';
+      const author = c.nickname || (c.author ? (c.author.nickname || c.author.name) : null) || '匿名';
+      const display = isAnon
+        ? '<span style="color:var(--text-muted);">匿名</span>'
+        : (typeof c.author === 'object' && c.author ? `<span style="${nickColorStyle(c.author)}">${escapeHtml(c.author.nickname || c.author.name)}</span>${levelBadgeHtml(c.author)}` : escapeHtml(author));
+      const uc = c.user_liked ? ' liked' : '';
+      const canDelete = currentUser && (c.user_id === currentUser.id || currentUser.role === 'founder' || currentUser.role === 'admin'); // [2026-08-04] 任务3
+      return `
+        <div class="comment-item" id="comment-${c.id}">
+          <div class="comment-header">
+            <span class="comment-nickname">${display}</span>
+            <span class="comment-time">${formatTime(c.created_at)}</span>
+          </div>
+          <div class="comment-content">${renderMarkdown(c.content)}</div>
+          <div class="comment-actions">
+            <button class="action-btn${uc}" onclick="toggleCommentLike(${c.id})" style="font-size:0.75rem;padding:2px 8px;">
+              👍 <span id="clike-${c.id}">${c.like_count||0}</span>
+            </button>
+            ${currentUser ? `<button class="comment-reply-btn" onclick="toggleReplyInput(${c.id})">回复</button>` : ''}
+            ${currentUser ? `<button class="comment-reply-btn" onclick="openCommentReportModal(${c.id})" style="color:var(--warning);">举报</button>` : ''}
+            ${canDelete ? `<button class="comment-reply-btn" onclick="deleteComment(${c.id})" style="color:var(--danger);">🗑️ 删除</button>` : ''}
+          </div>
+          <div id="reply-input-${c.id}" style="display:none;" class="reply-input-area">
+            <input type="text" class="comment-input" id="reply-text-${c.id}" placeholder="回复..." maxlength="500">
+            <label class="comment-anon-label" title="匿名回复，其他人看不到你的名字">
+              <input type="checkbox" id="reply-anon-${c.id}" class="comment-anon-check"> 匿名
+            </label>
+            <button class="comment-submit" onclick="submitReply(${c.id})">发送</button>
+          </div>
+          ${c.replies && c.replies.length ? `<div class="replies-section">${c.replies.map(r => renderReply(r)).join('')}</div>` : ''}
+        </div>`;
+    }
+
+    function renderReply(r) {
+      const isAnon = r.is_anonymous === 1 || r.is_anonymous === '1';
+      const author = r.nickname || (r.author ? (r.author.nickname || r.author.name) : null) || '匿名';
+      const display = isAnon
+        ? '<span style="color:var(--text-muted);">匿名</span>'
+        : (typeof r.author === 'object' && r.author ? `<span style="${nickColorStyle(r.author)}">${escapeHtml(r.author.nickname || r.author.name)}</span>${levelBadgeHtml(r.author)}` : escapeHtml(author));
+      const uc = r.user_liked ? ' liked' : '';
+      const canDelete = currentUser && (r.user_id === currentUser.id || currentUser.role === 'founder' || currentUser.role === 'admin'); // [2026-08-04] 任务3
+      return `
+        <div class="reply-item" id="comment-${r.id}">
+          <div class="comment-header">
+            <span class="comment-nickname">${display}</span>
+            <span class="comment-time">${formatTime(r.created_at)}</span>
+          </div>
+          <div class="comment-content">${renderMarkdown(r.content)}</div>
+          <div class="comment-actions">
+            <button class="action-btn${uc}" onclick="toggleCommentLike(${r.id})" style="font-size:0.75rem;padding:2px 8px;">
+              👍 <span id="clike-${r.id}">${r.like_count||0}</span>
+            </button>
+            ${currentUser ? `<button class="comment-reply-btn" onclick="openCommentReportModal(${r.id})" style="color:var(--warning);">举报</button>` : ''}
+            ${canDelete ? `<button class="comment-reply-btn" onclick="deleteComment(${r.id})" style="color:var(--danger);">🗑️ 删除</button>` : ''}
+          </div>
+        </div>`;
+    }
+
+    async function submitReply(parentId) {
+      const input = document.getElementById(`reply-text-${parentId}`);
+      const content = (input && input.value && input.value.trim());
+      if (!content) return;
+      const anonCheck = document.getElementById(`reply-anon-${parentId}`);
+      const is_anonymous = anonCheck && anonCheck.checked ? 1 : 0;
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...authHeaders()},
+          body: JSON.stringify({content,parent_comment_id:parentId,is_anonymous})
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'评论失败','error'); return; }
+        input.value = '';
+        document.getElementById(`reply-input-${parentId}`).style.display = 'none';
+        loadComments();
+      } catch { showToast('评论失败','error'); }
+    }
+
+    async function submitComment() {
+      const input = document.getElementById('comment-input');
+      const content = (input && input.value && input.value.trim());
+      if (!content) return;
+      const anonCheck = document.getElementById('comment-anon');
+      const is_anonymous = anonCheck && anonCheck.checked ? 1 : 0;
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...authHeaders()},
+          body: JSON.stringify({content,is_anonymous})
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'评论失败','error'); return; }
+        input.value = '';
+        loadComments();
+      } catch { showToast('评论失败','error'); }
+    }
+
+    function toggleReplyInput(commentId) {
+      const area = document.getElementById(`reply-input-${commentId}`);
+      if (area.style.display === 'none' || !area.style.display) {
+        area.style.display = 'flex';
+        document.getElementById(`reply-text-${commentId}`).focus();
+      } else { area.style.display = 'none'; }
+    }
+
+    async function toggleCommentLike(commentId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/comments/${commentId}/like`, {
+          method:'POST', headers:authHeaders()
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'操作失败','error'); return; }
+        const d = await res.json();
+        const el = document.getElementById(`clike-${commentId}`);
+        if (el) el.textContent = d.count;
+      } catch { showToast('操作失败','error'); }
+    }
+
+    // [2026-08-04] 任务3: Delete comment
+    async function deleteComment(commentId) {
+      if (!confirm('确定删除这条评论？')) return;
+      try {
+        const res = await fetch(`/api/posts/comments/${commentId}`, {
+          method: 'DELETE', headers: authHeaders()
+        });
+        if (!res.ok) { const e = await res.json(); showToast(e.error || '删除失败', 'error'); return; }
+        // Remove from DOM
+        const el = document.getElementById(`comment-${commentId}`);
+        if (el) el.remove();
+        showToast('已删除', 'success');
+      } catch { showToast('删除失败', 'error'); }
+    }
+
+    // [2026-08-03] 任务5: poll voting
+    async function votePoll(postId, optionId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/poll/vote`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...authHeaders()},
+          body: JSON.stringify({option_id: optionId})
+        });
+        if (!res.ok) { const e=await res.json(); showToast(e.error||'投票失败','error'); return; }
+        // Refresh the page to show updated poll
+        const data = await res.json();
+        if (currentPost && currentPost.poll) {
+          currentPost.poll.options = data.options;
+          currentPost.poll.total_votes = data.total_votes;
+          currentPost.poll.my_vote = data.my_vote;
+          renderDetail(currentPost);
+        }
+      } catch { showToast('投票失败','error'); }
+    }
+
+    init();
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

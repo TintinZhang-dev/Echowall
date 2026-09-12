@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>登录 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>🔐 登录 Phewall</h1>
+    <p class="auth-subtitle" id="login-subtitle">使用你的届、班级和姓名登录</p>
+    <p class="auth-warning" id="login-warning">⚠️ 请使用真实信息，占用他人姓名将被封禁</p>
+
+    <div id="internal-fields">
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">届</label>
+        <input type="number" id="year" class="form-input" placeholder="如 29" min="1" max="99" autocomplete="off">
+      </div>
+      <div class="form-col">
+        <label class="form-label">班级 <span class="form-hint">（可选）</span></label>
+        <input type="number" id="class_number" class="form-input" placeholder="如 7" min="0" max="99" autocomplete="off">
+      </div>
+    </div>
+    </div>
+
+    <div id="external-fields" style="display:none;">
+      <label class="form-label">用户名</label>
+      <input type="text" id="ext_username" class="form-input" placeholder="你的用户名" maxlength="50" autocomplete="username">
+    </div>
+
+    <label class="form-label">姓名</label>
+    <input type="text" id="name" class="form-input" placeholder="真实姓名" maxlength="50" autocomplete="name">
+
+    <label class="form-label">密码</label>
+    <input type="password" id="password" class="form-input" placeholder="输入密码" autocomplete="current-password">
+
+    <label style="display:flex;align-items:flex-start;gap:8px;margin:12px 0;font-size:0.8rem;cursor:pointer;line-height:1.5;">
+      <input type="checkbox" id="agree-terms" onchange="document.getElementById('submit-btn').disabled = !this.checked;" style="margin-top:3px;accent-color:var(--accent);">
+      <span>我已阅读并同意 <a href="/terms" target="_blank" style="color:var(--accent);text-decoration:underline;">《社区规则协议》</a>（含隐私保护与处理规则）</span>
+    </label>
+
+    <div id="error" class="form-error" style="display:none;"></div>
+
+    <button class="btn btn-primary btn-full" onclick="handleLogin()" id="submit-btn" disabled>登录</button>
+
+    <div style="text-align:center;margin:14px 0 4px;">
+      <button class="btn btn-link" onclick="toggleExternalMode()" id="ext-toggle-btn" style="font-size:0.85rem;">🎓 外校生？点此切换登录方式</button>
+    </div>
+
+    <div class="auth-links">
+      <a href="/register">注册账号</a>
+      <span>|</span>
+      <a href="/appeal">申诉</a>
+      <span>|</span>
+      <a href="/reset-password">忘记密码</a>
+      <span>|</span>
+      <a href="/">返回首页</a>
+    </div>
+  </div>
+
+  <script>
+    // 登录后回跳地址(登录门禁用;默认回首页)
+    function afterLoginUrl() {
+      const n = new URLSearchParams(location.search).get('next');
+      return (n && n.startsWith('/') && !n.startsWith('//')) ? n : '/';
+    }
+    // Redirect if already logged in (token is an httpOnly cookie)
+    (function() {
+      fetch('/api/auth/me')
+        .then(r => r.ok ? window.location.href = afterLoginUrl() : null)
+        .catch(() => {});
+    })();
+
+    let externalMode = false;
+    function toggleExternalMode() {
+      externalMode = !externalMode;
+      document.getElementById('internal-fields').style.display = externalMode ? 'none' : '';
+      document.getElementById('external-fields').style.display = externalMode ? '' : 'none';
+      document.getElementById('login-subtitle').textContent = externalMode ? '外校生使用用户名登录' : '使用你的届、班级和姓名登录';
+      document.getElementById('login-warning').style.display = externalMode ? 'none' : '';
+      document.getElementById('ext-toggle-btn').textContent = externalMode ? '🏫 我是本校学生？点此切换' : '🎓 外校生？点此切换登录方式';
+      // Re-evaluate submit state
+      const agree = document.getElementById('agree-terms').checked;
+      document.getElementById('submit-btn').disabled = !agree;
+    }
+
+    async function handleLogin() {
+      const year = document.getElementById('year').value.trim();
+      const class_number = document.getElementById('class_number').value.trim();
+      const name = externalMode ? document.getElementById('ext_username').value.trim() : document.getElementById('name').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error');
+      const btn = document.getElementById('submit-btn');
+
+      errorEl.style.display = 'none';
+
+      if (!name || !password) {
+        errorEl.textContent = '请填写所有必填字段';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      if (!document.getElementById('agree-terms').checked) {
+        errorEl.textContent = '请先阅读并同意《社区规则协议》';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(externalMode ? {
+            name: name,
+            password: password,
+            agree: true,
+            is_external: true
+          } : {
+            year: parseInt(year),
+            class_number: class_number ? parseInt(class_number) : 0,
+            name: name,
+            password: password,
+            agree: true
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || '登录失败';
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '登录';
+          return;
+        }
+
+        localStorage.setItem('user', JSON.stringify(data.user));
+        window.location.href = afterLoginUrl();
+      } catch (err) {
+        errorEl.textContent = '网络错误，请重试';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '登录';
+      }
+    }
+
+    // Enter key to submit
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

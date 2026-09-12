@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>板块 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .board-page { max-width: 600px; margin: 0 auto; padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom); }
+    .board-header-section { background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    .board-header-icon { font-size: 2.5rem; text-align: center; }
+    .board-header-name { font-weight: 700; font-size: 1.1rem; text-align: center; margin: 8px 0 4px; }
+    .board-header-desc { font-size: 0.85rem; color: var(--text-muted); text-align: center; }
+    .board-post-form { background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 16px; display:none; }
+    .board-post-form .form-input, .board-post-form .form-textarea,
+    .board-post-form .form-select, .board-post-form .btn { font-family: inherit; }
+    .board-post-form .form-textarea { width: 100%; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px; font-size: 0.92rem;
+      background: var(--card-bg); color: var(--text); resize: vertical; }
+    .board-post-form .form-input { width: 100%; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.88rem;
+      background: var(--card-bg); color: var(--text); }
+    .board-post-form .btn { padding: 8px 18px; border-radius: 20px; border: none;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .board-post-form .btn-primary { background: var(--accent); color: #fff; }
+    .board-post-form .btn-secondary { background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); }
+    .board-empty { text-align: center; padding: 60px 16px; color: var(--text-muted); }
+    .board-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .board-post-card { background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .board-post-meta { display: flex; gap: 8px; font-size: 0.8rem; color: var(--text-muted);
+      align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .board-post-content { font-size: 0.92rem; line-height: 1.55; word-break: break-word;
+      white-space: pre-wrap; }
+    .board-post-actions { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid var(--border); }
+    .board-action-btn { background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 0.85rem; padding: 4px 8px; border-radius: 12px;
+      font-family: inherit; }
+    .board-action-btn:hover { background: var(--bg-secondary); }
+    .board-action-btn.liked { color: #e0245e; }
+    .board-login-prompt { text-align: center; padding: 12px; color: var(--text-muted);
+      font-size: 0.85rem; background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/boards" style="color:var(--text);text-decoration:none;font-weight:700;">← 板块列表</a>
+      <span style="font-weight:700;font-size:1.05rem;" id="header-title">📋 板块</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="board-page">
+    <!-- Board info -->
+    <div class="board-header-section" id="board-header">
+      <div class="spinner" style="display:inline-flex;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>
+    </div>
+
+    <!-- Post form -->
+    <div class="board-login-prompt" id="board-login-prompt" style="display:none;">
+      <a href="/login" style="color:var(--accent);">登录</a> 后才能发帖、点赞和评论
+    </div>
+    <div class="board-post-form" id="board-post-form">
+      <div id="board-post-identity" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.88rem;">
+        <span class="avatar-circle avatar-default" id="board-post-avatar">?</span>
+        <span id="board-post-name" style="font-weight:600;"></span>
+      </div>
+      <div class="md-toolbar" style="margin-top:6px;">
+        <button type="button" class="md-btn" onclick="wrapMd('board-post-content','**','**')" title="加粗"><strong>B</strong></button>
+        <button type="button" class="md-btn md-btn-i" onclick="wrapMd('board-post-content','*','*')" title="斜体"><em>I</em></button>
+        <button type="button" class="md-btn md-btn-s" onclick="wrapMd('board-post-content','~~','~~')" title="删除线"><s>S</s></button>
+      </div>
+      <textarea id="board-post-content" class="form-textarea" rows="3" placeholder="分享你的想法..." maxlength="5000"></textarea>
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;"><span id="board-char-count">0</span>/5000</p>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:0.85rem;display:block;margin-bottom:4px;">图片/视频（可选，最多3个，单张≤20MB）</label>
+        <input type="file" id="board-post-media" accept="image/*,video/*" multiple style="font-size:0.85rem;">
+        <div id="board-media-preview" style="display:none;margin-top:6px;"></div>
+      </div>
+      <!-- Poll -->
+      <div style="margin-bottom:8px;">
+        <label style="font-size:0.85rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="board-has-poll" onchange="toggleBoardPoll()"> 🗳️ 发起投票
+        </label>
+        <div id="board-poll-section" style="display:none;margin-top:8px;">
+          <input type="text" id="board-poll-question" class="form-input" placeholder="投票问题" maxlength="200" style="margin-bottom:6px;">
+          <div id="board-poll-options">
+            <div style="display:flex;gap:6px;margin-bottom:4px;"><input type="text" class="form-input poll-option-inp" placeholder="选项 1" maxlength="100" style="flex:1;"></div>
+            <div style="display:flex;gap:6px;margin-bottom:4px;"><input type="text" class="form-input poll-option-inp" placeholder="选项 2" maxlength="100" style="flex:1;"></div>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="addBoardPollOption()" style="font-size:0.78rem;padding:4px 10px;">+ 添加选项</button>
+          <span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px;">最多8个</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <label style="font-size:0.85rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="board-post-anonymous"> 匿名发布
+        </label>
+        <label style="font-size:0.85rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="board-post-ext-hidden"> 🛡️ 对外校不可见
+        </label>
+      </div>
+      <div id="board-post-error" style="color:var(--danger);font-size:0.82rem;margin-top:6px;display:none;"></div>
+      <button class="btn btn-primary" onclick="submitBoardPost()" id="board-submit-btn" style="margin-top:10px;">发布</button>
+    </div>
+
+    <!-- Posts list -->
+    <div id="board-posts"></div>
+
+    <!-- Load more -->
+    <div id="board-load-more" style="text-align:center;padding:16px;">
+      <button id="board-load-btn" class="btn btn-secondary" onclick="loadBoardPosts()" style="display:none;">加载更多</button>
+      <div id="board-spinner" class="spinner" style="display:none;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>
+      <p id="board-no-more" style="display:none;color:var(--text-muted);font-size:0.85rem;">— 没有更多了 —</p>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" style="display:none;">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <button class="lightbox-prev" onclick="lightboxNav(-1)" id="lightbox-prev" style="display:none;">‹</button>
+    <button class="lightbox-next" onclick="lightboxNav(1)" id="lightbox-next" style="display:none;">›</button>
+    <div class="lightbox-counter" id="lightbox-counter" style="display:none;"></div>
+    <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation();">
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <script>
+    // ===== Config =====
+    const boardId = parseInt(new URLSearchParams(window.location.search).get('id')) || 0;
+    let boardData = null;
+    let currentUser = null;
+    let posts = [];
+    let page = 1;
+    let loading = false;
+    let hasMore = true;
+    let lightboxState = { images: [], currentIndex: 0 };
+
+    // ===== Helpers =====
+    function authHeaders() { return {}; }
+
+    // [2026-08-07] Markdown toolbar helper
+    function wrapMd(textareaId, before, after) {
+      const ta = document.getElementById(textareaId);
+      if (!ta) return;
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      const selected = ta.value.slice(start, end);
+      const replacement = selected ? before + selected + after : before + after;
+      ta.setRangeText(replacement, start, end, 'end');
+      ta.focus();
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function escapeHtml(text) {
+      if (!text) return ''; const d = document.createElement('div'); d.textContent = text; return d.innerHTML;
+    }
+    function formatTime(dateStr) {
+      if (!dateStr) return ''; const d = new Date(dateStr + 'Z'); const n = new Date(); const diff = n - d;
+      if (diff < 60000) return '刚刚'; if (diff < 3600000) return Math.floor(diff/60000)+' 分钟前';
+      if (diff < 86400000) return Math.floor(diff/3600000)+' 小时前';
+      if (diff < 604800000) return Math.floor(diff/86400000)+' 天前';
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    function avatarHtml(user, isAnonymous) {
+      if (!isAnonymous && user && user.avatar_type === 'custom' && user.avatar_url) {
+        return `<img src="${escapeHtml(user.avatar_url)}" class="avatar-img" alt="">`;
+      }
+      const displayName = user ? (user.nickname || user.name) : '';
+      const initial = displayName ? displayName[0] : '?';
+      const cls = isAnonymous ? 'avatar-anonymous' : (user ? 'avatar-initials' : 'avatar-anonymous');
+      return `<span class="avatar-circle ${cls}">${escapeHtml(initial)}</span>`;
+    }
+    function levelBadgeHtml(author) {
+      if (!author || !author.level) return '';
+      const color = author.level_color || '#9ca3af';
+      const emoji = author.level_emoji || '';
+      const name = author.level_name || '';
+      return `<span class="level-badge" style="color:${color};" title="Lv.${author.level} ${name}">Lv.${author.level} ${emoji}</span>`;
+    }
+    function nickColorStyle(author) {
+      return (author && author.nickname_color) ? `color:${author.nickname_color};` : '';
+    }
+    function showToast(msg, type) {
+      const t = document.getElementById('toast'); t.textContent = msg;
+      t.className = 'toast'+(type?' '+type:''); t.style.display = 'block';
+      clearTimeout(t._t); t._t = setTimeout(() => t.style.display='none', 2500);
+    }
+
+    // ===== Markdown =====
+    function renderMarkdown(text) {
+      if (!text) return ''; text = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n'); let html = escapeHtml(text);
+      const cbs = []; html = html.replace(/```([\s\S]*?)```/g, (_,c) => { cbs.push('<pre><code>'+c.trim()+'</code></pre>'); return '\x00CB'+(cbs.length-1)+'\x00'; });
+      const ics = []; html = html.replace(/`([^`]+)`/g, (_,c) => { ics.push('<code>'+c+'</code>'); return '\x01IC'+(ics.length-1)+'\x01'; });
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+      html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+      const ps = html.split(/\n\n+/);
+      html = ps.map(p => { p = p.trim(); if (!p) return ''; if (p.startsWith('<pre>')||p.startsWith('<blockquote>')) return p; p = p.replace(/\n/g,'<br>'); return '<p>'+p+'</p>'; }).join('');
+      html = html.replace(/\x00CB(\d+)\x00/g, (_,i) => cbs[parseInt(i)]);
+      html = html.replace(/\x01IC(\d+)\x01/g, (_,i) => ics[parseInt(i)]);
+      return html;
+    }
+
+    // ===== Media =====
+    function getMediaUrls(post) {
+      if (post.media_urls) { try { const a = typeof post.media_urls === 'string' ? JSON.parse(post.media_urls) : post.media_urls; if (Array.isArray(a)&&a.length>0) return a; } catch{} }
+      if (post.media_url) return [post.media_url]; return [];
+    }
+    function renderMediaHtml(urls, groupKey) {
+      if (!urls||urls.length===0) return ''; const gk = groupKey||'';
+      const lb = (i) => gk?` data-lightbox-group="${gk}" data-lightbox-index="${i}"`: '';
+      if (urls.length===1) {
+        const u=urls[0]; const iv=/\.(mp4|webm|mov|avi)$/i.test(u);
+        if (iv) return `<div class="post-media"><video src="${escapeHtml(u)}" controls preload="metadata"></video></div>`;
+        return `<div class="post-media"><img src="${escapeHtml(u)}" alt="图片" loading="lazy"${lb(0)} style="cursor:pointer;"></div>`;
+      }
+      const cols = urls.length<=2?2:3;
+      return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:4px;margin-bottom:8px;">${urls.map((u,i) => {
+        const iv=/\.(mp4|webm|mov|avi)$/i.test(u);
+        if (iv) return `<video src="${escapeHtml(u)}" controls preload="metadata" style="width:100%;max-height:250px;object-fit:cover;border-radius:4px;"></video>`;
+        return `<img src="${escapeHtml(u)}" alt="图片" loading="lazy"${lb(i)} style="width:100%;height:160px;object-fit:cover;border-radius:4px;cursor:pointer;">`;
+      }).join('')}</div>`;
+    }
+
+    // ===== Lightbox =====
+    function openLightbox(src, groupKey) {
+      const lb = document.getElementById('lightbox'), img = document.getElementById('lightbox-img');
+      const prev = document.getElementById('lightbox-prev'), next = document.getElementById('lightbox-next');
+      const counter = document.getElementById('lightbox-counter');
+      let images = []; if (groupKey) { const all = document.querySelectorAll(`[data-lightbox-group="${groupKey}"]`); images = Array.from(all).map(el=>el.src); }
+      if (images.length===0) images=[src];
+      const idx = images.indexOf(src); lightboxState = { images, currentIndex: idx>=0?idx:0 };
+      img.src = lightboxState.images[lightboxState.currentIndex]; lb.style.display = 'flex';
+      if (lightboxState.images.length>1) { prev.style.display='flex'; next.style.display='flex'; counter.style.display='block'; counter.textContent=`${lightboxState.currentIndex+1}/${lightboxState.images.length}`; }
+      else { prev.style.display='none'; next.style.display='none'; counter.style.display='none'; }
+    }
+    function closeLightbox() { document.getElementById('lightbox').style.display='none'; lightboxState={images:[],currentIndex:0}; }
+    function lightboxNav(dir) { if (lightboxState.images.length===0) return; lightboxState.currentIndex=(lightboxState.currentIndex+dir+lightboxState.images.length)%lightboxState.images.length; document.getElementById('lightbox-img').src=lightboxState.images[lightboxState.currentIndex]; document.getElementById('lightbox-counter').textContent=`${lightboxState.currentIndex+1}/${lightboxState.images.length}`; }
+    document.getElementById('lightbox').addEventListener('click',function(e){if(e.target===this)closeLightbox();});
+    document.addEventListener('keydown',function(e){if(document.getElementById('lightbox').style.display!=='flex')return;if(e.key==='Escape')closeLightbox();if(e.key==='ArrowLeft')lightboxNav(-1);if(e.key==='ArrowRight')lightboxNav(1);});
+    document.addEventListener('click',function(e){const img=e.target.closest('img');if(!img||img.closest('video')||img.closest('#lightbox'))return;const g=img.getAttribute('data-lightbox-group');if(g){e.stopPropagation();openLightbox(img.src,g);}});
+
+    // ===== Init =====
+    async function init() {
+      if (!boardId) { document.getElementById('board-header').innerHTML='<p style="text-align:center;color:var(--text-muted);">无效的板块</p>'; return; }
+      // Check auth
+      try { const r = await fetch('/api/auth/me',{headers:authHeaders()}); if(r.ok){const d=await r.json();currentUser=d.user;} } catch{}
+      await loadBoardInfo();
+      setupBoardUI();
+      await loadBoardPosts();
+      // Char counter
+      document.getElementById('board-post-content').addEventListener('input',function(){document.getElementById('board-char-count').textContent=this.value.length;});
+      // Media preview
+      document.getElementById('board-post-media').addEventListener('change',function(){
+        const files=Array.from(this.files||[]),preview=document.getElementById('board-media-preview');
+        if(files.length>3){ showToast('最多上传 3 个文件','error'); this.value=''; preview.style.display='none'; preview.innerHTML=''; return; }
+        if(files.length===0){preview.style.display='none';preview.innerHTML='';return;}
+        preview.style.display='block';preview.innerHTML=files.map(f=>{const url=URL.createObjectURL(f);return f.type.startsWith('video/')?`<video src="${url}" controls style="max-height:120px;border-radius:6px;width:100%;object-fit:cover;"></video>`:`<img src="${url}" style="height:100px;border-radius:6px;object-fit:cover;">`;}).join('');
+      });
+    }
+
+    async function loadBoardInfo() {
+      try {
+        const res = await fetch(`/api/boards/${boardId}`);
+        if (!res.ok) { document.getElementById('board-header').innerHTML='<p style="text-align:center;color:var(--text-muted);">板块不存在</p>'; return; }
+        const data = await res.json(); boardData = data.board;
+        document.getElementById('board-header').innerHTML = `
+          <div class="board-header-icon">${escapeHtml(boardData.icon)}</div>
+          <div class="board-header-name">${escapeHtml(boardData.icon)} ${escapeHtml(boardData.name)}</div>
+          <div class="board-header-desc">${escapeHtml(boardData.description)}</div>`;
+        document.getElementById('header-title').textContent = boardData.icon + ' ' + boardData.name;
+      } catch { document.getElementById('board-header').innerHTML='<p style="text-align:center;color:var(--text-muted);">加载失败</p>'; }
+    }
+
+    function setupBoardUI() {
+      const form = document.getElementById('board-post-form');
+      const prompt = document.getElementById('board-login-prompt');
+      if (currentUser) {
+        form.style.display = 'block'; prompt.style.display = 'none';
+        const dn = currentUser.nickname || currentUser.name;
+        document.getElementById('board-post-name').textContent = dn;
+        document.getElementById('board-post-avatar').innerHTML = avatarHtml(currentUser);
+      } else {
+        form.style.display = 'none'; prompt.style.display = 'block';
+      }
+    }
+
+    // ===== Load Posts =====
+    async function loadBoardPosts() {
+      if (loading || !hasMore) return; loading = true;
+      const loadBtn = document.getElementById('board-load-btn'), spinner = document.getElementById('board-spinner');
+      const noMore = document.getElementById('board-no-more');
+      loadBtn.style.display='none'; spinner.style.display='inline-flex';
+
+      try {
+        const res = await fetch(`/api/boards/${boardId}/posts?page=${page}&limit=20`,{headers:authHeaders()});
+        const data = await res.json();
+        if (data.posts && data.posts.length > 0) {
+          posts = page===1 ? data.posts : [...posts, ...data.posts];
+          renderBoardPosts(); page++;
+        }
+        hasMore = page <= data.totalPages; spinner.style.display='none';
+        if (hasMore) loadBtn.style.display='inline-flex';
+        else if (posts.length===0) { showEmpty(); } else noMore.style.display='block';
+      } catch { spinner.style.display='none'; if (posts.length>0) loadBtn.style.display='inline-flex'; showToast('加载失败','error'); }
+      loading = false;
+    }
+
+    function showEmpty() {
+      document.getElementById('board-posts').innerHTML = '<div class="board-empty"><div class="board-empty-icon">📝</div><p>还没有帖子，来发第一条吧！</p></div>';
+    }
+
+    // ===== Render =====
+    function renderBoardPosts() {
+      const container = document.getElementById('board-posts');
+      if (posts.length===0) { showEmpty(); return; }
+      container.innerHTML = posts.map(p => renderBoardPost(p)).join('');
+    }
+
+    function renderBoardPost(post) {
+      // Author
+      let authorHtml = '';
+      if (post.is_anonymous) {
+        authorHtml = `<span style="color:var(--text-muted);">匿名</span>`;
+      } else if (post.author) {
+        const dn = post.author.nickname || post.author.name;
+        authorHtml = `<a href="/user/${post.author.id}" style="color:var(--accent);text-decoration:none;${nickColorStyle(post.author)}">${escapeHtml(dn)}</a>${levelBadgeHtml(post.author)}${post.author.verified_label?' <span title="'+escapeHtml(post.author.verified_label)+'" style="font-size:0.75rem;">✅</span>':''}`;
+      } else {
+        authorHtml = '<span style="color:var(--text-muted);">匿名</span>';
+      }
+
+      // Media
+      const mediaHtml = renderMediaHtml(getMediaUrls(post), `board-post-${post.id}`);
+
+      // Poll
+      let pollHtml = '';
+      if (post.poll) {
+        const p = post.poll; const tv = p.total_votes||0; const hv = p.my_vote!==null&&p.my_vote!==undefined;
+        pollHtml = '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--bg-secondary);">';
+        pollHtml += `<div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">📊 ${escapeHtml(p.question)}</div><div style="display:flex;flex-direction:column;gap:5px;">`;
+        for (const o of p.options) {
+          const pct = tv>0?Math.round((o.vote_count||0)/tv*100):0; const imv = p.my_vote===o.id;
+          if (hv) {
+            pollHtml += `<div style="position:relative;padding:5px 8px;border-radius:6px;border:1px solid var(--border);overflow:hidden;">
+              <div style="position:absolute;top:0;left:0;bottom:0;background:${imv?'rgba(29,155,240,0.2)':'rgba(29,155,240,0.08)'};width:${pct}%;border-radius:6px;"></div>
+              <div style="position:relative;display:flex;justify-content:space-between;font-size:0.82rem;"><span>${escapeHtml(o.text)}${imv?' ✓':''}</span><span style="color:var(--text-muted);">${pct}% (${o.vote_count||0}票)</span></div></div>`;
+          } else {
+            pollHtml += `<button onclick="voteBoardPoll(${post.id},${o.id})" style="display:block;width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text);cursor:pointer;font-size:0.82rem;font-family:inherit;text-align:left;">${escapeHtml(o.text)}</button>`;
+          }
+        }
+        pollHtml += `</div><div style="font-size:0.73rem;color:var(--text-muted);margin-top:4px;">共 ${tv} 票</div></div>`;
+      }
+
+      const likedClass = post.user_liked ? ' liked' : '';
+      const lc = post.like_count||0; const cc = post.comment_count||0;
+
+      return `<div class="board-post-card" id="board-post-${post.id}">
+        <div class="board-post-meta">
+          ${authorHtml} · <span>${formatTime(post.created_at)}</span>
+          ${post.pinned?'<span style="color:var(--accent);">📌 置顶</span>':''}
+        </div>
+        <div class="board-post-content">${renderMarkdown(post.content)}</div>
+        ${mediaHtml}
+        ${pollHtml}
+        <div class="board-post-actions">
+          <button class="board-action-btn${likedClass}" onclick="toggleBoardLike(${post.id})">❤️ ${lc}</button>
+          <a href="/post/${post.id}" class="board-action-btn" style="text-decoration:none;">💬 ${cc}</a>
+          ${currentUser&&post.user_id===currentUser.id?`<button class="board-action-btn" onclick="deleteBoardPost(${post.id})" style="color:var(--danger);">🗑️</button>`:''}
+        </div>
+      </div>`;
+    }
+
+    // ===== Actions =====
+    async function toggleBoardLike(postId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/like`,{method:'POST',headers:authHeaders()});
+        if(!res.ok){const e=await res.json();showToast(e.error,'error');return;}
+        const d = await res.json();
+        const post = posts.find(p=>p.id===postId); if(post){post.like_count=d.count;post.user_liked=d.liked;}
+        renderBoardPosts();
+      } catch { showToast('操作失败','error'); }
+    }
+
+    async function deleteBoardPost(postId) {
+      if(!confirm('确定删除？'))return;
+      try {
+        const res = await fetch(`/api/posts/${postId}/delete`,{method:'POST',headers:authHeaders()});
+        if(!res.ok){const e=await res.json();showToast(e.error,'error');return;}
+        posts = posts.filter(p=>p.id!==postId); renderBoardPosts(); showToast('已删除','success');
+      } catch { showToast('删除失败','error'); }
+    }
+
+    async function voteBoardPoll(postId, optionId) {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      try {
+        const res = await fetch(`/api/posts/${postId}/poll/vote`,{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({option_id:optionId})});
+        if(!res.ok){showToast('投票失败','error');return;}
+        const d = await res.json();
+        const post = posts.find(p=>p.id===postId);
+        if(post&&post.poll){post.poll.options=d.options;post.poll.total_votes=d.total_votes;post.poll.my_vote=d.my_vote;}
+        renderBoardPosts();
+      } catch { showToast('投票失败','error'); }
+    }
+
+    // ===== Submit Post =====
+    async function submitBoardPost() {
+      if (!currentUser) { showToast('请先登录','error'); return; }
+      const content = document.getElementById('board-post-content').value.trim();
+      const errEl = document.getElementById('board-post-error');
+      errEl.style.display='none';
+      if (!content) { errEl.textContent='内容不能为空';errEl.style.display='block';return; }
+
+      const btn = document.getElementById('board-submit-btn'); btn.disabled=true; btn.textContent='发布中...';
+
+      try {
+        const fd = new FormData();
+        fd.append('content',content);
+        fd.append('board_id',String(boardId));
+        fd.append('is_anonymous',document.getElementById('board-post-anonymous').checked?'1':'0');
+        const extHiddenEl = document.getElementById('board-post-ext-hidden');
+        if (extHiddenEl) fd.append('external_hidden',extHiddenEl.checked?'1':'0');
+        fd.append('category','other');
+
+        // Poll
+        if (document.getElementById('board-has-poll').checked) {
+          const q = document.getElementById('board-poll-question').value.trim();
+          const opts = []; document.querySelectorAll('.poll-option-inp').forEach(i=>{const t=i.value.trim();if(t)opts.push({text:t});});
+          if (q&&opts.length>=2) { fd.append('poll_question',q); fd.append('poll_options',JSON.stringify(opts)); }
+          else if (q||opts.some(o=>o.text)) { errEl.textContent='投票需要问题+至少2个选项';errEl.style.display='block';btn.disabled=false;btn.textContent='发布';return; }
+        }
+
+        const mediaEl = document.getElementById('board-post-media');
+        if (mediaEl.files&&mediaEl.files.length>0) { for(const f of mediaEl.files) fd.append('mediaFiles',f); }
+
+        const res = await fetch('/api/posts',{method:'POST',headers:authHeaders(),body:fd});
+        if(!res.ok){const e=await res.json();errEl.textContent=e.error||'发布失败';errEl.style.display='block';btn.disabled=false;btn.textContent='发布';return;}
+
+        // Reset & reload
+        document.getElementById('board-post-content').value='';
+        document.getElementById('board-char-count').textContent='0';
+        document.getElementById('board-post-anonymous').checked=false;
+        if(extHiddenEl) extHiddenEl.checked=false;
+        document.getElementById('board-media-preview').style.display='none';
+        document.getElementById('board-media-preview').innerHTML='';
+        document.getElementById('board-post-media').value='';
+        document.getElementById('board-has-poll').checked=false;
+        document.getElementById('board-poll-section').style.display='none';
+        btn.disabled=false; btn.textContent='发布';
+        page=1; posts=[]; hasMore=true;
+        document.getElementById('board-no-more').style.display='none';
+        await loadBoardPosts();
+        showToast('发布成功！','success');
+      } catch { errEl.textContent='网络错误';errEl.style.display='block';btn.disabled=false;btn.textContent='发布'; }
+    }
+
+    // ===== Poll UI =====
+    function toggleBoardPoll() { document.getElementById('board-poll-section').style.display=document.getElementById('board-has-poll').checked?'block':'none'; }
+    function addBoardPollOption() {
+      const c = document.getElementById('board-poll-options');
+      const n = c.querySelectorAll('.poll-option-inp').length;
+      if (n>=8) { showToast('最多8个选项','error'); return; }
+      const d = document.createElement('div'); d.style.cssText='display:flex;gap:6px;margin-bottom:4px;';
+      d.innerHTML=`<input type="text" class="form-input poll-option-inp" placeholder="选项 ${n+1}" maxlength="100" style="flex:1;"><button type="button" class="btn btn-secondary" onclick="this.parentElement.remove()" style="font-size:0.78rem;padding:2px 8px;">✕</button>`;
+      c.appendChild(d);
+    }
+
+    // ===== Infinite scroll =====
+    let scrollObs = null;
+    function setupScrollObserver() {
+      if (scrollObs) scrollObs.disconnect();
+      const sentinel = document.getElementById('board-load-more');
+      if (!sentinel) return;
+      scrollObs = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) loadBoardPosts();
+      }, { rootMargin: '300px', threshold: 0 });
+      scrollObs.observe(sentinel);
+    }
+
+    init();
+    setTimeout(setupScrollObserver, 500);
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

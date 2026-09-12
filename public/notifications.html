@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>通知 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .notif-page {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .notif-list { margin-top: 12px; }
+    .notif-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .notif-item:hover { background: var(--hover-bg, #f0f2f3); }
+    .notif-item.unread {
+      border-left: 3px solid var(--accent);
+      background: rgba(29,155,240,0.04);
+    }
+    .notif-item-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+    .notif-item-content {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .notif-item-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .notif-empty {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--text-muted);
+    }
+    .notif-empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .notif-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .notif-actions button {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .notif-actions button:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" style="color:var(--text);text-decoration:none;font-weight:700;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">🔔 通知</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="notif-page">
+    <div class="notif-actions">
+      <span id="notif-count" style="font-size:0.88rem;color:var(--text-muted);"></span>
+      <button onclick="markAllRead()">全部已读</button>
+    </div>
+    <div id="notif-list" class="notif-list">
+      <div class="spinner" style="display:inline-flex;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>
+    </div>
+  </div>
+
+  <script>
+    function getToken() { return localStorage.getItem('token'); }
+    function authHeaders() {
+      // Token is in httpOnly cookie — same-origin fetch sends it automatically
+      return {};
+    }
+
+    async function loadNotifications() {
+      const list = document.getElementById('notif-list');
+      const count = document.getElementById('notif-count');
+
+      try {
+        const res = await fetch('/api/notifications', { headers: authHeaders() });
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const data = await res.json();
+
+        count.textContent = data.unreadCount > 0 ? `${data.unreadCount} 条未读` : '全部已读';
+        count.style.color = data.unreadCount > 0 ? 'var(--danger)' : '';
+
+        if (!data.notifications || data.notifications.length === 0) {
+          list.innerHTML = '<div class="notif-empty"><div class="notif-empty-icon">🔔</div><p>暂无通知</p></div>';
+          return;
+        }
+
+        list.innerHTML = data.notifications.map(n => {
+          const unreadClass = n.is_read ? '' : ' unread';
+          const time = formatTime(n.created_at);
+          const postId = n.post_id || 0;
+          const postLink = n.post_id
+            ? `<div style="color:var(--accent);font-size:0.78rem;margin-top:2px;">查看帖子 →</div>`
+            : '';
+          return `
+            <div class="notif-item${unreadClass}" onclick="markRead(${n.id}, ${postId})">
+              <div class="notif-item-title">${escapeHtml(n.title)}</div>
+              <div class="notif-item-content">${escapeHtml(n.content)}</div>
+              ${postLink}
+              <div class="notif-item-time">${time}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        list.innerHTML = '<div class="notif-empty"><div class="notif-empty-icon">😵</div><p>加载失败</p></div>';
+      }
+    }
+
+    async function markRead(id, postId) {
+      try {
+        await fetch(`/api/notifications/${id}/read`, {
+          method: 'POST', headers: authHeaders()
+        });
+        if (postId) {
+          window.location.href = `/post/${postId}`;
+          return;
+        }
+        loadNotifications();
+      } catch { /* ignore */ }
+    }
+
+    async function markAllRead() {
+      try {
+        await fetch('/api/notifications/read-all', {
+          method: 'POST', headers: authHeaders()
+        });
+        loadNotifications();
+      } catch { /* ignore */ }
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date();
+      const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Redirect if not logged in
+    loadNotifications();
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

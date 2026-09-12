@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>申诉 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>📩 提交申诉</h1>
+    <p class="auth-subtitle">如果你的姓名被他人恶意注册，或忘记了密码，可以在此提交申诉</p>
+
+    <div class="appeal-type-selector">
+      <label class="form-label">申诉类型</label>
+      <div class="form-radio-group">
+        <label class="form-radio">
+          <input type="radio" name="appeal_type" value="name_dispute" checked>
+          <span>姓名被占用</span>
+        </label>
+        <label class="form-radio">
+          <input type="radio" name="appeal_type" value="password_reset">
+          <span>忘记密码</span>
+        </label>
+        <label class="form-radio">
+          <input type="radio" name="appeal_type" value="other">
+          <span>其他</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">届 <span class="form-required">*</span></label>
+        <input type="number" id="year" class="form-input" placeholder="如 29" min="1" max="99" autocomplete="off">
+      </div>
+      <div class="form-col">
+        <label class="form-label">班级 <span class="form-required">*</span></label>
+        <input type="number" id="class_number" class="form-input" placeholder="如 7" min="1" max="99" autocomplete="off">
+      </div>
+    </div>
+
+    <label class="form-label">姓名 <span class="form-required">*</span></label>
+    <input type="text" id="name" class="form-input" placeholder="你的真实姓名" maxlength="50">
+
+    <label class="form-label">申诉原因</label>
+    <textarea id="reason" class="form-textarea" rows="4" placeholder="请简述申诉原因，如：这是我的真实姓名，被人恶意注册..."></textarea>
+
+    <div id="error" class="form-error" style="display:none;"></div>
+    <div id="success" class="form-error" style="display:none;background:rgba(0,186,124,0.06);border-color:rgba(0,186,124,0.2);color:var(--success);"></div>
+
+    <button class="btn btn-primary btn-full" onclick="handleAppeal()" id="submit-btn">提交申诉</button>
+
+    <div class="auth-links">
+      <a href="/login">返回登录</a>
+      <span>|</span>
+      <a href="/register">注册账号</a>
+      <span>|</span>
+      <a href="/">返回首页</a>
+    </div>
+  </div>
+
+  <script>
+    async function handleAppeal() {
+      const year = document.getElementById('year').value.trim();
+      const class_number = document.getElementById('class_number').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const reason = document.getElementById('reason').value.trim();
+      const errorEl = document.getElementById('error');
+      const successEl = document.getElementById('success');
+      const btn = document.getElementById('submit-btn');
+
+      errorEl.style.display = 'none';
+      successEl.style.display = 'none';
+
+      if (!year || !class_number || !name) {
+        errorEl.textContent = '请填写届、班级和姓名';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+
+      try {
+        const appealType = document.querySelector('input[name="appeal_type"]:checked').value;
+        const res = await fetch('/api/auth/appeal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: parseInt(year),
+            class_number: parseInt(class_number),
+            name: name,
+            reason: reason,
+            appeal_type: appealType
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || '提交失败';
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '提交申诉';
+          return;
+        }
+
+        successEl.innerHTML = '申诉请求已发送<br><br><strong style="color:var(--accent);">📱 请添加站长微信：SapereAude_Tintin（这是我的微信 ID），添加后说明你的申诉/重置请求，站长核实后处理</strong>';
+        successEl.style.display = 'block';
+        btn.style.display = 'none';
+        document.getElementById('reason').disabled = true;
+        document.getElementById('year').disabled = true;
+        document.getElementById('class_number').disabled = true;
+        document.getElementById('name').disabled = true;
+      } catch (err) {
+        errorEl.textContent = '网络错误，请重试';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '提交申诉';
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleAppeal();
+    });
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

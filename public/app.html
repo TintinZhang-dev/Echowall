@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>安卓 App — Phewall</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, #1d9bf0 0%, #0b6bbd 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; color: #1f2937;
+    }
+    .card {
+      background: #fff; border-radius: 20px; padding: 32px 28px;
+      max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    .logo {
+      width: 88px; height: 88px; border-radius: 22px; margin: 0 auto 16px;
+      background: #1d9bf0; display: flex; align-items: center; justify-content: center;
+      font-size: 52px; font-weight: 800; color: #fff; box-shadow: 0 8px 24px rgba(29,155,240,.4);
+    }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+    .meta {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 22px;
+    }
+    .badge {
+      background: #eff6ff; color: #1d4ed8; border-radius: 999px; padding: 4px 12px;
+      font-size: 12px; font-weight: 600;
+    }
+    .dl-btn {
+      display: block; background: #1d9bf0; color: #fff; text-decoration: none;
+      padding: 14px 0; border-radius: 12px; font-size: 17px; font-weight: 700;
+      margin-bottom: 8px; transition: background .15s;
+    }
+    .dl-btn:hover { background: #0b6bbd; }
+    .dl-note { font-size: 12px; color: #9ca3af; margin-bottom: 24px; }
+    .steps {
+      text-align: left; background: #f9fafb; border-radius: 12px; padding: 16px 18px;
+    }
+    .steps h3 { font-size: 14px; color: #374151; margin-bottom: 10px; }
+    .steps ol { padding-left: 20px; font-size: 13px; color: #4b5563; line-height: 1.9; }
+    .back { display: inline-block; margin-top: 18px; color: #6b7280; font-size: 13px; text-decoration: none; }
+    .back:hover { color: #1d9bf0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">P</div>
+    <h1>华二普陀校园墙</h1>
+    <div class="sub">Phewall · 安卓版 App</div>
+    <div class="meta">
+      <span class="badge">v1.1.7</span>
+      <span class="badge">948 KB</span>
+      <span class="badge">Android 5.0+</span>
+    </div>
+    <a class="dl-btn" href="/downloads/Phewall-latest.apk">📱 下载安卓 App</a>
+    <div class="dl-note">网页版与 App 完全互通，数据同步</div>
+    <div class="steps">
+      <h3>安装步骤</h3>
+      <ol>
+        <li>点击上方按钮下载 APK</li>
+        <li>打开下载的文件，允许「安装未知应用」</li>
+        <li>安装完成后从桌面打开 Phewall</li>
+        <li>以后有新版本直接覆盖安装，数据不受影响</li>
+      </ol>
+    </div>
+    <a class="back" href="/">← 返回校园墙</a>
+  </div>
+</body>
+</html>

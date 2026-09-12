@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>设置 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .settings-layout {
+      display: flex;
+      gap: 20px;
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+      align-items: flex-start;
+    }
+    /* Sidebar nav */
+    .settings-nav {
+      position: sticky;
+      top: calc(56px + 16px + env(safe-area-inset-top));
+      width: 150px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .settings-nav a {
+      display: block;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .settings-nav a:hover {
+      background: var(--hover-bg, #f0f2f3);
+      color: var(--text);
+    }
+    .settings-nav a.active {
+      background: rgba(29,155,240,0.1);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .settings-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .settings-section {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    .settings-section h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    @media (max-width: 767px) {
+      .settings-layout {
+        flex-direction: column;
+        padding-top: calc(56px + 8px + env(safe-area-inset-top));
+      }
+      .settings-nav {
+        position: static;
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 4px;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .settings-nav a {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+      }
+    }
+    .settings-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: 0.9rem;
+    }
+    .settings-info-label {
+      color: var(--text-muted);
+    }
+    .settings-info-value {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .settings-btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .my-post-card {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .my-post-card:last-child { border-bottom: none; }
+    .my-post-meta {
+      display: flex; gap: 12px; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .my-post-content {
+      font-size: 0.9rem; white-space: pre-wrap; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    /* Avatar upload */
+    .settings-avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-avatar-preview {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .settings-avatar-preview .avatar-circle {
+      width: 64px; height: 64px;
+      font-size: 1.5rem;
+    }
+    .settings-avatar-preview .avatar-img {
+      width: 64px; height: 64px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .settings-avatar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .settings-avatar-actions .btn {
+      font-size: 0.82rem;
+      padding: 5px 14px;
+    }
+    .settings-avatar-msg {
+      font-size: 0.82rem;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast" style="display:none;"></div>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" style="color:var(--text);text-decoration:none;font-weight:700;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">⚙️ 设置</span>
+      <a href="/notifications" style="text-decoration:none;font-size:1.1rem;">🔔</a>
+    </div>
+  </header>
+
+  <div class="settings-layout">
+    <!-- Sidebar Nav -->
+    <nav class="settings-nav" id="settings-nav">
+      <a href="#section-profile" class="active">👤 个人信息</a>
+      <a href="#section-level">🌱 等级特权</a>
+      <a href="#section-class">📋 班级信息</a>
+      <a href="#section-verify">✅ 组织认证</a>
+      <a href="#section-password">🔒 修改密码</a>
+      <a href="#section-posts">📝 我的帖子</a>
+      <a href="#section-privacy-toggle">🛡️ 主页隐私</a>
+    </nav>
+
+    <div class="settings-content">
+    <!-- Section 1: Profile Info -->
+    <div class="settings-section" id="section-profile">
+      <h2>👤 个人信息</h2>
+      <div class="settings-avatar-row">
+        <div class="settings-avatar-preview" id="avatar-preview"></div>
+        <div class="settings-avatar-actions">
+          <label class="btn btn-secondary" style="cursor:pointer;">
+            📷 选择图片
+            <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="previewAvatar()">
+          </label>
+          <button class="btn btn-primary" onclick="uploadAvatar()" id="upload-avatar-btn">上传头像</button>
+          <button class="btn btn-secondary" onclick="deleteAvatar()" id="delete-avatar-btn">恢复默认头像</button>
+          <span id="avatar-msg" class="settings-avatar-msg" style="display:none;"></span>
+        </div>
+      </div>
+      <div class="settings-info-row">
+        <span class="settings-info-label">届 · 班级</span>
+        <span class="settings-info-value" id="info-year-class">—</span>
+      </div>
+      <div class="settings-info-row">
+        <span class="settings-info-label">姓名</span>
+        <span class="settings-info-value" id="info-name">—</span>
+      </div>
+      <label class="form-label" style="margin-top:14px;">显示昵称</label>
+      <input type="text" id="settings-nickname" class="form-input" placeholder="设置昵称（留空则显示真实姓名）" maxlength="50">
+      <button class="btn btn-primary" onclick="saveNickname()" id="save-nickname-btn" style="margin-top:10px;">保存昵称</button>
+      <span id="nickname-msg" style="font-size:0.82rem;margin-left:10px;color:var(--success);display:none;">已保存</span>
+
+      <label class="form-label" style="margin-top:14px;">个人简介</label>
+      <textarea id="settings-bio" class="form-input" placeholder="一句话介绍自己，比如你最喜欢的一句话（最多200字）" maxlength="200" rows="3" style="resize:vertical;min-height:60px;"></textarea>
+      <button class="btn btn-primary" onclick="saveBio()" id="save-bio-btn" style="margin-top:10px;">保存简介</button>
+      <span id="bio-msg" style="font-size:0.82rem;margin-left:10px;color:var(--success);display:none;">已保存</span>
+    </div>
+
+    <!-- Section: 等级特权 -->
+    <div class="settings-section" id="section-level">
+      <h2>🌱 等级与特权</h2>
+      <div id="level-summary" style="margin-bottom:16px;"></div>
+      <div style="margin-bottom:18px;">
+        <label class="form-label">昵称颜色 <span class="form-hint">（Lv.2 解锁）</span></label>
+        <div id="nickname-color-picker" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"></div>
+        <span id="nickname-color-msg" style="font-size:0.82rem;margin-left:10px;color:var(--success);display:none;">已保存</span>
+      </div>
+      <div>
+        <label class="form-label">帖子字体大小 <span class="form-hint">（Lv.3 解锁，仅影响本人浏览）</span></label>
+        <div id="font-size-picker" style="display:flex;gap:8px;"></div>
+        <span id="font-size-msg" style="font-size:0.82rem;margin-left:10px;color:var(--success);display:none;">已保存</span>
+      </div>
+    </div>
+
+    <!-- Section: Class Info -->
+    <div id="section-class" class="settings-section">
+      <h2>📋 班级信息</h2>
+      <div id="class-display">
+        <div class="settings-info-row">
+          <span class="settings-info-label">年级</span>
+          <span class="settings-info-value" id="info-year">—</span>
+        </div>
+        <div class="settings-info-row">
+          <span class="settings-info-label">班级</span>
+          <span class="settings-info-value" id="info-class">—</span>
+        </div>
+        <button class="btn btn-secondary" onclick="showClassEdit()" id="class-edit-btn" style="margin-top:8px;font-size:0.82rem;">✏️ 修改班级</button>
+      </div>
+      <div id="class-edit" style="display:none;">
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">⚠️ 修改班级后，你需要用新班级信息重新登录</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:0.85rem;">年级</label>
+          <input type="number" id="settings-year" class="form-input" placeholder="如 2024" min="1" max="99" style="max-width:100px;">
+          <label style="font-size:0.85rem;">班级</label>
+          <input type="number" id="settings-class" class="form-input" placeholder="如 7" min="1" style="max-width:100px;">
+          <button class="btn btn-primary" onclick="saveClass()">保存</button>
+          <button class="btn btn-secondary" onclick="cancelClassEdit()">取消</button>
+        </div>
+        <div id="class-msg" style="font-size:0.85rem;margin-top:8px;display:none;"></div>
+      </div>
+      <div id="class-section-alert" style="display:none;">
+        <p style="color:var(--danger);font-size:0.88rem;margin-top:10px;padding:10px 14px;background:rgba(244,33,46,0.06);border-radius:8px;border:1px solid rgba(244,33,46,0.2);">请填写你的班级，否则 <strong>2026年9月1日后</strong> 无法发帖、评论和点赞。</p>
+      </div>
+    </div>
+
+    <!-- Section 2: Change Password -->
+    <!-- Section: Verification -->
+  <div class="settings-section" id="section-verify">
+      <h2>✅ 组织认证</h2>
+      <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:12px;">认证后可以在帖子中显示组织身份，并发布置顶通知。</p>
+      <div id="verify-status"></div>
+      <div id="verify-form">
+        <label class="form-label">组织名称 <span class="form-required">*</span></label>
+        <input type="text" id="verify-org-name" class="form-input" placeholder="如：羽毛球社、学生会宣传部" maxlength="100">
+        <label class="form-label">你的职务 <span class="form-hint">（可选）</span></label>
+        <input type="text" id="verify-role" class="form-input" placeholder="如：社长、部长" maxlength="50">
+        <label class="form-label">说明 <span class="form-hint">（可选，管理员审核用）</span></label>
+        <textarea id="verify-reason" class="form-textarea" rows="3" placeholder="补充说明..." maxlength="500"></textarea>
+        <div id="verify-error" class="form-error" style="display:none;"></div>
+        <button class="btn btn-primary" onclick="submitVerification()" id="verify-submit-btn" style="margin-top:10px;">提交认证申请</button>
+        <span id="verify-msg" style="font-size:0.85rem;margin-left:10px;display:none;"></span>
+      </div>
+    </div>
+
+    <div class="settings-section" id="section-password">
+      <h2>🔒 修改密码</h2>
+      <label class="form-label">旧密码</label>
+      <input type="password" id="old-password" class="form-input" placeholder="输入当前密码">
+      <label class="form-label">新密码</label>
+      <input type="password" id="new-password" class="form-input" placeholder="至少4个字符">
+      <label class="form-label">确认新密码</label>
+      <input type="password" id="new-password2" class="form-input" placeholder="再次输入新密码">
+      <div id="password-error" class="form-error" style="display:none;"></div>
+      <button class="btn btn-primary" onclick="changePassword()" id="change-password-btn" style="margin-top:12px;">修改密码</button>
+    </div>
+
+    <div class="settings-section" id="section-posts">
+      <h2>📝 我的帖子</h2>
+      <div id="my-posts-list">
+        <div class="spinner" style="display:inline-flex;"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>
+      </div>
+    </div>
+
+    <!-- [2026-08-03] 任务4: 主页隐私开关 -->
+    <div class="settings-section" id="section-privacy-toggle">
+      <h2>🛡️ 主页对外展示</h2>
+      <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:12px;">关闭后，其他用户将无法查看你的个人主页和帖子列表（你自己和管理员仍然可见）。</p>
+      <div class="form-check-row">
+        <input type="checkbox" id="profile-public-toggle" onchange="toggleProfilePublic()">
+        <label for="profile-public-toggle">公开我的主页</label>
+      </div>
+    </div>
+
+    <div class="settings-section" id="section-privacy">
+      <h2>🛡️ 数据与隐私</h2>
+      <p style="font-size:0.82rem;color:var(--muted,#999);margin-bottom:12px;">根据《社区规则协议》第十四条，你享有数据导出、删除与撤回同意权。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="exportMyData()">📦 导出我的数据</button>
+        <button class="btn btn-danger" onclick="deleteAccount()" style="background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.4);">🗑️ 注销账号</button>
+      </div>
+      <div id="delete-confirm" style="display:none;margin-top:14px;padding:14px;border:1px solid rgba(231,76,60,0.4);border-radius:8px;background:rgba(231,76,60,0.06);">
+        <p style="font-size:0.85rem;margin-bottom:10px;">⚠️ 注销后你的账号将被删除，你发布的帖子/评论将匿名化保留（显示为"匿名"），此操作不可撤销。</p>
+        <input type="password" id="delete-password" class="form-input" placeholder="输入密码确认注销" style="margin-bottom:10px;">
+        <div id="delete-error" class="form-error" style="display:none;"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-danger" onclick="confirmDeleteAccount()">确认注销</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('delete-confirm').style.display='none'">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;padding:16px 0;">
+      <button class="btn btn-secondary" onclick="logout()" style="margin-right:10px;">退出登录</button>
+      <a href="/" class="btn btn-secondary" style="text-decoration:none;">返回首页</a>
+    </div>
+  </div>
+</div>
+
+  <script>
+    function showToast(msg, type) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      toast.style.display = 'block';
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+    let settingsUser = null;
+
+    function getToken() { return localStorage.getItem('token'); }
+    function authHeaders() {
+      // Token is in httpOnly cookie — same-origin fetch sends it automatically
+      return {};
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (!res.ok) { window.location.href = '/login'; return; }
+        const data = await res.json();
+        settingsUser = data.user;
+
+        document.getElementById('info-year-class').textContent = `${settingsUser.year}届${settingsUser.class_number || '?'}班`;
+        document.getElementById('info-name').textContent = settingsUser.name;
+        document.getElementById('settings-nickname').value = settingsUser.nickname || '';
+        document.getElementById('settings-bio').value = settingsUser.bio || '';
+        // [2026-08-03] 任务4: load profile privacy state
+        document.getElementById('profile-public-toggle').checked = (settingsUser.profile_public !== 0);
+
+        // [2026-08-07] Class display/edit
+        document.getElementById('info-year').textContent = settingsUser.year + ' 届';
+        document.getElementById('info-class').textContent = (settingsUser.class_number || '?') + ' 班';
+        if (!settingsUser.class_number || settingsUser.class_number === 0) {
+          document.getElementById('class-section-alert').style.display = 'block';
+          // Auto-show edit form for new users
+          showClassEdit();
+        }
+
+        updateAvatarPreview();
+      } catch (err) {
+        window.location.href = '/login';
+      }
+
+      loadLevelSettings();
+      loadMyPosts();
+    }
+
+    async function saveNickname() {
+      const nickname = document.getElementById('settings-nickname').value.trim();
+      const msg = document.getElementById('nickname-msg');
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ nickname })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          settingsUser = data.user;
+          localStorage.setItem('user', JSON.stringify(data.user));
+          msg.style.display = 'inline';
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
+        }
+      } catch (err) { alert('保存失败'); }
+    }
+
+    async function saveBio() {
+      const bio = document.getElementById('settings-bio').value.trim();
+      const msg = document.getElementById('bio-msg');
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ bio })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          settingsUser = data.user;
+          localStorage.setItem('user', JSON.stringify(data.user));
+          msg.style.display = 'inline';
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
+        } else {
+          const d = await res.json().catch(() => ({}));
+          alert(d.error || '保存失败');
+        }
+      } catch (err) { alert('保存失败'); }
+    }
+
+    // ===== 等级与特权 =====
+    const NICKNAME_COLORS = [
+      { name: '绿', value: '#22c55e' },
+      { name: '浅绿', value: '#84cc16' },
+      { name: '粉', value: '#ec4899' },
+      { name: '蓝', value: '#3b82f6' },
+      { name: '紫', value: '#8b5cf6' },
+      { name: '金', value: '#f59e0b' },
+    ];
+    const FONT_SIZES = [
+      { key: 'small', label: '小', size: '0.85rem' },
+      { key: 'medium', label: '中', size: '0.95rem' },
+      { key: 'large', label: '大', size: '1.05rem' },
+    ];
+
+    async function loadLevelSettings() {
+      if (!settingsUser) return;
+      const colorBox = document.getElementById('nickname-color-picker');
+      const sizeBox = document.getElementById('font-size-picker');
+      const unlockedColor = (settingsUser.level || 1) >= 2;
+      const unlockedSize = (settingsUser.level || 1) >= 3;
+
+      colorBox.innerHTML = NICKNAME_COLORS.map(c => {
+        const selected = settingsUser.nickname_color === c.value;
+        const style = unlockedColor
+          ? `background:${c.value};${selected ? 'outline:3px solid var(--text);outline-offset:2px;' : ''}`
+          : `background:${c.value};opacity:0.3;`;
+        return `<button type="button" title="${c.name}${unlockedColor ? '' : '（Lv.2 解锁）'}" onclick="saveNicknameColor('${c.value}')" ${unlockedColor ? '' : 'disabled'} style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);cursor:${unlockedColor ? 'pointer' : 'not-allowed'};${style}"></button>`;
+      }).join('');
+      if (!unlockedColor) {
+        colorBox.insertAdjacentHTML('beforeend', '<span style="font-size:0.78rem;color:var(--text-muted);">Lv.2 解锁彩色昵称</span>');
+      }
+
+      sizeBox.innerHTML = FONT_SIZES.map(s => {
+        const selected = settingsUser.font_size === s.key;
+        const cls = selected ? 'btn btn-primary' : 'btn btn-secondary';
+        return `<button type="button" class="${cls}" onclick="saveFontSize('${s.key}')" ${unlockedSize ? '' : 'disabled'} style="font-size:${s.size};${unlockedSize ? '' : 'opacity:0.4;'}">${s.label}</button>`;
+      }).join('');
+      if (!unlockedSize) {
+        sizeBox.insertAdjacentHTML('beforeend', '<span style="font-size:0.78rem;color:var(--text-muted);">Lv.3 解锁字体设置</span>');
+      }
+
+      try {
+        const res = await fetch('/api/points', { headers: authHeaders() });
+        if (res.ok) {
+          const d = await res.json();
+          const summary = document.getElementById('level-summary');
+          const pinTxt = d.pin
+            ? `置顶特权：每次 ${d.pin.duration_hours >= 24 ? (d.pin.duration_hours / 24) + ' 天' : d.pin.duration_hours + ' 小时'} · ${d.pin.period === 'daily' ? '今日' : '本周'}剩余 ${d.pin.remaining} 次`
+            : '置顶特权：Lv.4 解锁';
+          summary.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+              <span style="font-weight:700;color:${d.level_color || '#9ca3af'};"><span class="level-badge" style="color:${d.level_color || '#9ca3af'};margin-left:0;">Lv.${d.level} ${d.level_emoji}</span> ${escapeHtml(d.level_name)}</span>
+              <span style="font-size:0.85rem;color:var(--text-muted);">${d.points} 积分 · 连续登录 ${d.streak_days} 天</span>
+            </div>
+            <div class="level-progress"><div class="level-progress-fill" style="width:${d.progress_pct || 0}%;background:${d.level_color || '#9ca3af'};"></div></div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">${d.next_level ? `距 Lv.${d.next_level.level} ${escapeHtml(d.next_level.name)} 还需 ${d.next_level.pointsNeeded} 积分` : '已达最高等级 🎉'}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:8px;">${pinTxt}</div>
+          `;
+        }
+      } catch (err) { /* ignore */ }
+    }
+
+    async function saveNicknameColor(color) {
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ nickname_color: color })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          settingsUser = data.user;
+          localStorage.setItem('user', JSON.stringify(data.user));
+          const msg = document.getElementById('nickname-color-msg');
+          msg.style.display = 'inline';
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
+          loadLevelSettings();
+        } else {
+          alert(data.error || '保存失败');
+        }
+      } catch (err) { alert('保存失败'); }
+    }
+
+    async function saveFontSize(size) {
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ font_size: size })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          settingsUser = data.user;
+          localStorage.setItem('user', JSON.stringify(data.user));
+          const msg = document.getElementById('font-size-msg');
+          msg.style.display = 'inline';
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
+          loadLevelSettings();
+        } else {
+          alert(data.error || '保存失败');
+        }
+      } catch (err) { alert('保存失败'); }
+    }
+
+    async function changePassword() {
+      const oldPw = document.getElementById('old-password').value;
+      const newPw = document.getElementById('new-password').value;
+      const newPw2 = document.getElementById('new-password2').value;
+      const errEl = document.getElementById('password-error');
+      errEl.style.display = 'none';
+
+      if (!oldPw || !newPw) { errEl.textContent = '请填写旧密码和新密码'; errEl.style.display = 'block'; return; }
+      if (newPw.length < 4) { errEl.textContent = '新密码至少需要4个字符'; errEl.style.display = 'block'; return; }
+      if (newPw !== newPw2) { errEl.textContent = '两次新密码不一致'; errEl.style.display = 'block'; return; }
+
+      try {
+        const res = await fetch('/api/user/change-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('密码修改成功！');
+          document.getElementById('old-password').value = '';
+          document.getElementById('new-password').value = '';
+          document.getElementById('new-password2').value = '';
+        } else {
+          errEl.textContent = data.error || '修改失败';
+          errEl.style.display = 'block';
+        }
+      } catch (err) { errEl.textContent = '网络错误'; errEl.style.display = 'block'; }
+    }
+
+    async function loadMyPosts() {
+      const container = document.getElementById('my-posts-list');
+      try {
+        const res = await fetch('/api/user/posts', { headers: authHeaders() });
+        const data = await res.json();
+        if (!data.posts || data.posts.length === 0) {
+          container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:16px;">暂无帖子</p>';
+          return;
+        }
+        container.innerHTML = data.posts.map(p => {
+          const time = formatTime(p.created_at);
+          const anonLabel = p.is_anonymous ? ' [匿名]' : '';
+          return `
+            <div class="my-post-card">
+              <div class="my-post-meta">
+                <span>${time}</span>
+                <span>❤️ ${p.like_count || 0}</span>
+                <span>💬 ${p.comment_count || 0}</span>
+                ${p.is_anonymous ? '<span style="color:var(--text-muted);">匿名</span>' : ''}
+              </div>
+              <div class="my-post-content">${escapeHtml(p.content)}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = '<p style="color:var(--text-muted);">加载失败</p>';
+      }
+    }
+
+    function showClassEdit() {
+      document.getElementById('class-display').style.display = 'none';
+      document.getElementById('class-edit').style.display = 'block';
+      document.getElementById('class-msg').style.display = 'none';
+      if (settingsUser) {
+        document.getElementById('settings-year').value = settingsUser.year || '';
+        document.getElementById('settings-class').value = settingsUser.class_number || '';
+      }
+    }
+    function cancelClassEdit() {
+      document.getElementById('class-display').style.display = 'block';
+      document.getElementById('class-edit').style.display = 'none';
+    }
+    async function saveClass() {
+      const yearVal = document.getElementById('settings-year').value.trim();
+      const classVal = document.getElementById('settings-class').value.trim();
+      const msgEl = document.getElementById('class-msg');
+      msgEl.style.display = 'none';
+
+      if (!yearVal || !classVal) { showClassMsg('请填写年级和班级', 'error'); return; }
+      const year = parseInt(yearVal);
+      const classNum = parseInt(classVal);
+      if (isNaN(year) || year < 1 || year > 99) { showClassMsg('年级必须是 1-99 的数字', 'error'); return; }
+      if (isNaN(classNum) || classNum < 1) { showClassMsg('班级必须是正整数', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ year, class_number: classNum })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showClassMsg(data.error || '保存失败', 'error');
+          return;
+        }
+        // Update local state
+        settingsUser = data.user;
+        localStorage.setItem('user', JSON.stringify(data.user));
+        // Update display
+        document.getElementById('info-year').textContent = settingsUser.year + ' 届';
+        document.getElementById('info-class').textContent = (settingsUser.class_number || '?') + ' 班';
+        document.getElementById('info-year-class').textContent = `${settingsUser.year}届${settingsUser.class_number || '?'}班`;
+        document.getElementById('class-section-alert').style.display = 'none';
+        cancelClassEdit();
+        showClassMsg('✅ 班级信息已保存！修改后请用新班级重新登录', 'success');
+      } catch (err) { showClassMsg('网络错误', 'error'); }
+    }
+    function showClassMsg(msg, type) {
+      const el = document.getElementById('class-msg');
+      el.textContent = msg;
+      el.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+      el.style.display = 'block';
+    }
+
+    function logout() {
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+
+    // ===== 数据导出（协议 14.1） =====
+    async function exportMyData() {
+      try {
+        const res = await fetch('/api/auth/export-data', { headers: authHeaders() });
+        if (!res.ok) { const e = await res.json().catch(() => ({})); showToast(e.error || '导出失败', 'error'); return; }
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `phewall-my-data-${data.user.name || 'user'}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('已导出，请在下载中查看', 'success');
+      } catch { showToast('导出失败：网络错误', 'error'); }
+    }
+
+    // ===== 注销账号（协议 14.3/14.4，个保法47条） =====
+    function deleteAccount() {
+      document.getElementById('delete-confirm').style.display = 'block';
+      document.getElementById('delete-password').value = '';
+      document.getElementById('delete-error').style.display = 'none';
+    }
+    async function confirmDeleteAccount() {
+      const password = document.getElementById('delete-password').value;
+      if (!password) { showToast('请输入密码确认', 'error'); return; }
+      if (!confirm('确定要永久注销账号吗？此操作不可撤销。')) return;
+      try {
+        const res = await fetch('/api/auth/delete-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ password })
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          const errEl = document.getElementById('delete-error');
+          errEl.textContent = e.error || '注销失败';
+          errEl.style.display = 'block';
+          return;
+        }
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        showToast('账号已注销', 'success');
+        setTimeout(() => window.location.href = '/', 800);
+      } catch { showToast('注销失败：网络错误', 'error'); }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date();
+      const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function avatarHtml(user, isAnonymous) {
+      if (!isAnonymous && user && user.avatar_type === 'custom' && user.avatar_url) {
+        return `<img src="${escapeHtml(user.avatar_url)}" class="avatar-img" alt="">`;
+      }
+      const displayName = user ? (user.nickname || user.name) : '';
+      const initial = displayName ? displayName[0] : '?';
+      const cls = isAnonymous ? 'avatar-anonymous' : (user ? 'avatar-initials' : 'avatar-anonymous');
+      return `<span class="avatar-circle ${cls}">${escapeHtml(initial)}</span>`;
+    }
+
+    function updateAvatarPreview() {
+      const preview = document.getElementById('avatar-preview');
+      if (settingsUser) {
+        preview.innerHTML = avatarHtml(settingsUser);
+      }
+    }
+
+    function previewAvatar() {
+      const file = document.getElementById('avatar-file-input').files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('avatar-preview').innerHTML =
+          `<img src="${e.target.result}" style="width:64px;height:64px;object-fit:cover;border-radius:50%;" alt="">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function uploadAvatar() {
+      const fileInput = document.getElementById('avatar-file-input');
+      const file = fileInput.files[0];
+      const msgEl = document.getElementById('avatar-msg');
+      msgEl.style.display = 'none';
+
+      if (!file) {
+        msgEl.textContent = '请先选择一张图片';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'inline';
+        return;
+      }
+
+      const btn = document.getElementById('upload-avatar-btn');
+      btn.disabled = true;
+      btn.textContent = '上传中...';
+
+      try {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const res = await fetch('/api/user/avatar', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          settingsUser.avatar_url = data.avatar_url;
+          settingsUser.avatar_type = 'custom';
+          localStorage.setItem('user', JSON.stringify(settingsUser));
+          updateAvatarPreview();
+          fileInput.value = '';
+          msgEl.textContent = '✅ 头像已更新';
+          msgEl.style.color = 'var(--success)';
+          msgEl.style.display = 'inline';
+          setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+        } else {
+          msgEl.textContent = data.error || '上传失败';
+          msgEl.style.color = 'var(--danger)';
+          msgEl.style.display = 'inline';
+        }
+      } catch (err) {
+        msgEl.textContent = '网络错误';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'inline';
+      }
+      btn.disabled = false;
+      btn.textContent = '上传头像';
+    }
+
+    async function deleteAvatar() {
+      if (!confirm('确定恢复默认头像吗？')) return;
+      const msgEl = document.getElementById('avatar-msg');
+      msgEl.style.display = 'none';
+
+      const btn = document.getElementById('delete-avatar-btn');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/user/avatar', {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          settingsUser.avatar_url = '';
+          settingsUser.avatar_type = 'default';
+          localStorage.setItem('user', JSON.stringify(settingsUser));
+          updateAvatarPreview();
+          document.getElementById('avatar-file-input').value = '';
+          msgEl.textContent = '✅ 已恢复默认头像';
+          msgEl.style.color = 'var(--success)';
+          msgEl.style.display = 'inline';
+          setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          msgEl.textContent = data.error || '操作失败';
+          msgEl.style.color = 'var(--danger)';
+          msgEl.style.display = 'inline';
+        }
+      } catch (err) {
+        msgEl.textContent = '网络错误';
+        msgEl.style.color = 'var(--danger)';
+        msgEl.style.display = 'inline';
+      }
+      btn.disabled = false;
+    }
+
+    // ===== Verification =====
+    async function checkVerificationStatus() {
+      if (!settingsUser) return;
+      const statusEl = document.getElementById('verify-status');
+      const formEl = document.getElementById('verify-form');
+
+      if (settingsUser.verified_label) {
+        statusEl.innerHTML = `<p style="color:var(--success);font-weight:600;padding:10px 14px;background:rgba(0,186,124,0.08);border-radius:8px;border:1px solid rgba(0,186,124,0.2);">✅ 已认证 — ${escapeHtml(settingsUser.verified_label)}</p>`;
+        formEl.style.display = 'none';
+        return;
+      }
+
+      // Check if there's a pending request
+      try {
+        const res = await fetch('/api/user/verify-status', { headers: authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pending) {
+            statusEl.innerHTML = '<p style="color:var(--warning);font-weight:600;padding:10px 14px;background:rgba(243,156,18,0.08);border-radius:8px;border:1px solid rgba(243,156,18,0.2);">⏳ 认证申请已提交，等待管理员审核</p>';
+            formEl.style.display = 'none';
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
+      statusEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;">尚未认证</p>';
+      formEl.style.display = 'block';
+    }
+
+    async function submitVerification() {
+      const orgName = document.getElementById('verify-org-name').value.trim();
+      const role = document.getElementById('verify-role').value.trim();
+      const reason = document.getElementById('verify-reason').value.trim();
+      const errEl = document.getElementById('verify-error');
+      const msgEl = document.getElementById('verify-msg');
+
+      errEl.style.display = 'none';
+      msgEl.style.display = 'none';
+
+      if (!orgName) {
+        errEl.textContent = '请输入组织名称';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      document.getElementById('verify-submit-btn').disabled = true;
+      document.getElementById('verify-submit-btn').textContent = '提交中...';
+
+      try {
+        const res = await fetch('/api/auth/verify-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ org_name: orgName, role, reason })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msgEl.style.display = 'inline';
+          msgEl.style.color = 'var(--success)';
+          msgEl.textContent = '✅ 申请已提交！';
+          document.getElementById('verify-submit-btn').disabled = false;
+          document.getElementById('verify-submit-btn').textContent = '提交认证申请';
+          await checkVerificationStatus();
+        } else {
+          errEl.textContent = data.error || '提交失败';
+          errEl.style.display = 'block';
+          document.getElementById('verify-submit-btn').disabled = false;
+          document.getElementById('verify-submit-btn').textContent = '提交认证申请';
+        }
+      } catch (err) {
+        errEl.textContent = '网络错误';
+        errEl.style.display = 'block';
+        document.getElementById('verify-submit-btn').disabled = false;
+        document.getElementById('verify-submit-btn').textContent = '提交认证申请';
+      }
+    }
+
+    // [2026-08-03] 任务4: toggle profile public/private
+    async function toggleProfilePublic() {
+      const checked = document.getElementById('profile-public-toggle').checked;
+      try {
+        const res = await fetch('/api/user/privacy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ profile_public: checked ? 1 : 0 })
+        });
+        if (!res.ok) { alert('保存失败'); document.getElementById('profile-public-toggle').checked = !checked; return; }
+        // Update local state
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        userData.profile_public = checked ? 1 : 0;
+        localStorage.setItem('user', JSON.stringify(userData));
+        if (settingsUser) settingsUser.profile_public = checked ? 1 : 0;
+      } catch {
+        alert('网络错误');
+        document.getElementById('profile-public-toggle').checked = !checked;
+      }
+    }
+
+    // Add verification check to init
+    const origInit = init;
+    init = async function() {
+      await origInit();
+      checkVerificationStatus();
+    };
+
+    // Scroll spy — highlight active nav item
+    function setupScrollSpy() {
+      const sections = document.querySelectorAll('.settings-section[id]');
+      const navLinks = document.querySelectorAll('.settings-nav a');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            navLinks.forEach(a => a.classList.remove('active'));
+            const link = document.querySelector(`.settings-nav a[href="#${entry.target.id}"]`);
+            if (link) link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-20% 0px -60% 0px' });
+
+      sections.forEach(s => observer.observe(s));
+    }
+
+    init();
+    setTimeout(setupScrollSpy, 500);
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

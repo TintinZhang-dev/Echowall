@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>用户 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .user-page {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .user-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .user-back {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 50%;
+    }
+    .user-back:hover { background: var(--bg-secondary); }
+    .user-profile {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 4px 0 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .user-profile-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .user-profile-info { flex: 1; }
+    .user-profile-name { font-weight: 800; font-size: 1.1rem; }
+    .user-profile-handle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+    .user-profile-meta { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
+    .user-profile-badge {
+      display: inline-block;
+      background: rgba(29,155,240,0.1);
+      color: var(--accent);
+      font-size: 0.78rem;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .user-profile-stats {
+      display: flex;
+      gap: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .user-profile-stats strong { color: var(--text); }
+    .follow-btn {
+      padding: 6px 20px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      border: 1px solid var(--accent);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .follow-btn.not-following {
+      background: var(--text);
+      color: #fff;
+      border-color: var(--text);
+    }
+    .follow-btn.following {
+      background: none;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .follow-btn.not-following:hover { opacity: 0.85; }
+    .follow-btn.following:hover { border-color: var(--danger); color: var(--danger); background: rgba(244,33,46,0.04); }
+    .user-page .post-card { cursor: pointer; }
+    .user-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="user-page">
+    <div class="user-header">
+      <button class="user-back" onclick="history.back()">←</button>
+      <span style="font-weight:700;font-size:1.1rem;" id="user-title">用户</span>
+    </div>
+
+    <div id="user-profile-area">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div id="user-points-logs"></div>
+
+    <div id="user-posts">
+      <div class="spinner" style="display:inline-flex;padding:16px;">
+        <div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let profileUser = null;
+
+    function getToken() {
+      // Token lives in httpOnly cookie (pw_token) — check cookie presence
+      return document.cookie.split(';').map(s => s.trim()).find(s => s.startsWith('pw_token=')) ? '1' : '';
+    }
+    function authHeaders() {
+      // Same-origin fetch automatically sends the httpOnly cookie; no manual header needed
+      return {};
+    }
+
+    async function initUserPage() {
+      await checkAuth();
+      const pathParts = window.location.pathname.split('/');
+      const userId = parseInt(pathParts[pathParts.length - 1]);
+      if (!userId) {
+        document.getElementById('user-posts').innerHTML = '<div class="user-empty">用户不存在</div>';
+        return;
+      }
+      await loadUser(userId);
+    }
+    // readyState guard: init even if the script loads after DOMContentLoaded (slow networks)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initUserPage);
+    } else {
+      initUserPage();
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.user;
+        }
+      } catch {}
+    }
+
+    async function loadUser(userId) {
+      try {
+        const res = await fetch(`/api/user/${userId}/posts`, { headers: authHeaders() });
+        if (!res.ok) {
+          document.getElementById('user-posts').innerHTML = '<div class="user-empty">用户不存在</div>';
+          return;
+        }
+        const data = await res.json();
+        // [2026-08-03] 任务4: handle profile hidden
+        if (data.profile_hidden) {
+          profileUser = data.user;
+          renderProfileHidden(data.user);
+          return;
+        }
+        profileUser = data.user;
+        renderProfile(data.user, data.following);
+        renderPosts(data.posts);
+        loadPointsLogs(userId);
+      } catch (err) {
+        document.getElementById('user-posts').innerHTML = '<div class="user-empty">加载失败</div>';
+      }
+    }
+
+    // [2026-08-16] 仅自己可见最近积分明细
+    async function loadPointsLogs(userId) {
+      const box = document.getElementById('user-points-logs');
+      if (!box) return;
+      if (!currentUser || currentUser.id !== userId) { box.innerHTML = ''; return; }
+      try {
+        const res = await fetch('/api/points', { headers: authHeaders() });
+        if (!res.ok) { box.innerHTML = ''; return; }
+        const data = await res.json();
+        const logs = data.logs || [];
+        const reasonMap = {
+          login: '每日登录', streak: '连续登录', post: '发帖',
+          comment: '评论', liked: '收到赞', followed: '被关注'
+        };
+        box.innerHTML = `
+          <div style="margin-bottom:16px;">
+            <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:8px;">🌱 积分明细 <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">（仅显示最近 20 条，删帖会扣回积分）</span></h3>
+            ${logs.length ? `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;">${
+              logs.map(l => `
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
+                  <span>${reasonMap[l.reason] || l.reason}</span>
+                  <span style="font-weight:700;color:${l.amount > 0 ? 'var(--success)' : 'var(--danger)'};">${l.amount > 0 ? '+' : ''}${l.amount}</span>
+                </div>`).join('')
+            }</div>` : '<p style="color:var(--text-muted);font-size:0.85rem;">暂无积分记录</p>'}
+          </div>`;
+      } catch { box.innerHTML = ''; }
+    }
+
+    // [2026-08-03] 任务4: render hidden profile page
+    function renderProfileHidden(user) {
+      const displayName = user.nickname || user.name;
+      const initial = displayName[0];
+      document.getElementById('user-title').textContent = displayName;
+      document.getElementById('user-profile-area').innerHTML = `
+        <div class="user-profile">
+          <div class="user-profile-avatar">${avatarHtml(user)}</div>
+          <div class="user-profile-info">
+            <div class="user-profile-name">${escapeHtml(displayName)}</div>
+            <div class="user-profile-handle">@${escapeHtml(user.name)}</div>
+          </div>
+        </div>
+      `;
+      document.getElementById('user-posts').innerHTML = `
+        <div class="user-empty" style="padding:60px 20px;">
+          <div style="font-size:3rem;margin-bottom:12px;">🔒</div>
+          <p style="font-size:1rem;font-weight:600;margin-bottom:8px;">该用户未公开主页</p>
+          <p style="font-size:0.85rem;">ta 设置了主页隐私保护，暂时无法查看动态</p>
+        </div>
+      `;
+    }
+
+    function renderProfile(user, following) {
+      const displayName = user.nickname || user.name;
+      const initial = displayName[0];
+      const badge = user.verified_label
+        ? `<div class="user-profile-badge">✓ ${escapeHtml(user.verified_label)}</div>`
+        : (user.is_verified ? '<div class="user-profile-badge">✓ 已认证</div>' : '');
+
+      const isSelf = currentUser && currentUser.id === user.id;
+      let followBtnHtml = '';
+      let dmBtnHtml = '';
+      if (!isSelf) {
+        followBtnHtml = `<button class="follow-btn ${following ? 'following' : 'not-following'}" id="follow-btn-${user.id}" onclick="toggleFollow(${user.id})">
+          ${following ? '已关注' : '关注'}
+        </button>`;
+        if (currentUser) {
+          dmBtnHtml = `<a href="/dm?user=${user.id}" class="follow-btn not-following" style="text-decoration:none;display:inline-block;text-align:center;">✉️ 发私信</a>`;
+        }
+      }
+
+      document.getElementById('user-title').textContent = displayName;
+
+      document.getElementById('user-profile-area').innerHTML = `
+        <div class="user-profile">
+          <div class="user-profile-avatar">${avatarHtml(user)}</div>
+          <div class="user-profile-info">
+            <div class="user-profile-name"><span style="${nickColorStyle(user)}">${escapeHtml(displayName)}</span>${levelBadgeHtml(user)}</div>
+            <div class="user-profile-handle">@${escapeHtml(user.name)}</div>
+            <div class="user-profile-meta">${user.is_external ? (user.school ? '外校 · '+escapeHtml(user.school) : '外校用户') : user.year+'届'+user.class_number+'班'}</div>
+            ${user.bio ? '<div class="user-profile-bio" style="font-size:0.88rem;color:var(--text);margin-top:6px;white-space:pre-wrap;word-break:break-word;">'+escapeHtml(user.bio)+'</div>' : ''}
+            ${badge}
+            <div class="user-profile-level" style="margin:10px 0;padding:10px 12px;background:var(--bg-secondary);border-radius:10px;border:1px solid var(--border);">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;color:var(--text-muted);">
+                <span style="font-weight:700;color:${user.level_color || '#9ca3af'};">Lv.${user.level || 1} ${user.level_emoji || ''} ${escapeHtml(user.level_name || '')}</span>
+                <span>${user.points || 0} 积分</span>
+              </div>
+              <div class="level-progress">
+                <div class="level-progress-fill" style="width:${user.progress_pct || 0}%;background:${user.level_color || '#9ca3af'};"></div>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
+                ${user.next_level ? `距 Lv.${user.next_level.level} ${escapeHtml(user.next_level.name)} 还需 ${user.next_level.pointsNeeded} 积分` : '已达最高等级 🎉'}
+              </div>
+            </div>
+            <div class="user-profile-stats">
+              <span><strong>${user.follower_count || 0}</strong> 关注者</span>
+              <span><strong>${user.following_count || 0}</strong> 正在关注</span>
+            </div>
+          </div>
+          ${followBtnHtml}
+          ${dmBtnHtml}
+        </div>
+      `;
+    }
+
+    function renderPosts(posts) {
+      if (!posts || posts.length === 0) {
+        document.getElementById('user-posts').innerHTML = '<div class="user-empty">暂无帖子</div>';
+        return;
+      }
+      const catMap = {
+        'confession': '💕 表白', 'blessing': '🎉 祝福', 'fun': '😄 整活',
+        'activity': '📢 活动', 'rant': '💬 吐槽', 'advice': '💡 建议',
+        'question': '❓ 求助', 'other': '📌 其他', 'sports': '⚽ 体育',
+        'daily': '☀️ 日常', 'water': '🌊 每日一水', 'treehole': '🌳 树洞', 'friends': '🤝 交友', 'emo': '😢 emo'
+      };
+      document.getElementById('user-posts').innerHTML = posts.map(p => {
+        const isAnon = p.is_anonymous;
+        const displayName = isAnon ? '匿名' : (p.author ? (p.author.nickname || p.author.name) : '匿名');
+        const catBadge = p.category ? `<span class="cat-badge">${catMap[p.category] || '📌 其他'}</span>` : '';
+        const time = formatTime(p.created_at);
+        const authorInfo = !isAnon && p.author
+          ? `<span class="post-author-info">${p.author.year}届${p.author.class_number}班</span>` : '';
+
+        // [2026-08-04] 任务4: Multi-image support
+        let mediaHtml = '';
+        const urls = getMediaUrls(p);
+        if (urls.length === 1) {
+          const isVid = /\.(mp4|webm|mov|avi)$/i.test(urls[0]);
+          mediaHtml = isVid
+            ? `<div class="post-media"><video src="${escapeHtml(urls[0])}" controls preload="metadata"></video></div>`
+            : `<div class="post-media"><img src="${escapeHtml(urls[0])}" alt="图片" loading="lazy" onclick="event.stopPropagation();openLightbox(this.src)" style="cursor:pointer;"></div>`;
+        } else if (urls.length > 1) {
+          const badge = `<span style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);color:#fff;font-size:0.7rem;padding:2px 6px;border-radius:10px;">共 ${urls.length} 张</span>`;
+          const isVid = /\.(mp4|webm|mov|avi)$/i.test(urls[0]);
+          mediaHtml = isVid
+            ? `<div class="post-media" style="position:relative;"><video src="${escapeHtml(urls[0])}" controls preload="metadata"></video>${badge}</div>`
+            : `<div class="post-media" style="position:relative;"><img src="${escapeHtml(urls[0])}" alt="图片" loading="lazy" onclick="event.stopPropagation();openLightbox(this.src)" style="cursor:pointer;">${badge}</div>`;
+        }
+
+        return `
+          <div class="post-card" onclick="window.location='/post/${p.id}'">
+            <div class="post-card-top">
+              <div class="post-avatar-col">
+                ${avatarHtml(p.is_anonymous || !p.author ? null : p.author, p.is_anonymous || !p.author)}
+              </div>
+              <div class="post-body-col">
+                <div class="post-meta">
+                  ${catBadge}
+                  <span class="post-author-name">${escapeHtml(displayName)}</span>
+                  ${authorInfo}
+                  <span class="post-time">${time}</span>
+                </div>
+                <div class="post-content">${renderMarkdown(p.content || '')}</div>
+                ${mediaHtml}
+                ${renderDocxCard(p)}
+                <div class="post-actions" style="font-size:0.8rem;color:var(--text-muted);">
+                  ❤️ ${p.like_count || 0} &nbsp; 💬 ${p.comment_count || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // [2026-08-04] 任务5: Lightweight Markdown rendering (security-first)
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+      const codeBlocks = [];
+      html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+        return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+      });
+      const inlineCodes = [];
+      html = html.replace(/`([^`]+)`/g, (_, code) => {
+        inlineCodes.push('<code>' + code + '</code>');
+        return '\x01IC' + (inlineCodes.length - 1) + '\x01';
+      });
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '<em>$2</em>');
+      html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+      const paragraphs = html.split(/\n\n+/);
+      html = paragraphs.map(p => {
+        p = p.trim(); if (!p) return '';
+        if (p.startsWith('<pre>') || p.startsWith('<blockquote>')) return p;
+        p = p.replace(/\n/g, '<br>');
+        return '<p>' + p + '</p>';
+      }).join('');
+      html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)]);
+      html = html.replace(/\x01IC(\d+)\x01/g, (_, i) => inlineCodes[parseInt(i)]);
+      return html;
+    }
+
+    // [2026-08-31] Word 文档附件卡片
+    function renderDocxCard(post) {
+      if (!post || !post.docx_url) return '';
+      const name = post.docx_name || '文档.docx';
+      return `<div class="docx-card"><span class="docx-icon">📄</span><span class="docx-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><a class="docx-dl" href="${escapeHtml(post.docx_url)}" rel="noopener noreferrer" target="_blank">下载 ⬇</a></div>`;
+    }
+
+    // [2026-08-04] 任务4: Helper to get media URLs from a post
+    function getMediaUrls(post) {
+      if (post.media_urls) {
+        try {
+          const arr = typeof post.media_urls === 'string' ? JSON.parse(post.media_urls) : post.media_urls;
+          if (Array.isArray(arr) && arr.length > 0) return arr;
+        } catch {}
+      }
+      if (post.media_url) return [post.media_url];
+      return [];
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date();
+      const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+      if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
+      return dateStr.substring(0, 10);
+    }
+    function avatarHtml(user, isAnonymous) {
+      if (!isAnonymous && user && user.avatar_type === 'custom' && user.avatar_url) {
+        return `<img src="${escapeHtml(user.avatar_url)}" class="avatar-img" alt="">`;
+      }
+      const displayName = user ? (user.nickname || user.name) : '';
+      const initial = displayName ? displayName[0] : '?';
+      const cls = isAnonymous ? 'avatar-anonymous' : (user ? 'avatar-initials' : 'avatar-anonymous');
+      return `<span class="avatar-circle ${cls}">${escapeHtml(initial)}</span>`;
+    }
+
+    // [2026-08-16] 等级徽章 + 昵称颜色
+    function levelBadgeHtml(author) {
+      if (!author || !author.level) return '';
+      const color = author.level_color || '#9ca3af';
+      const emoji = author.level_emoji || '';
+      const name = author.level_name || '';
+      return `<span class="level-badge" style="color:${color};" title="Lv.${author.level} ${name}">Lv.${author.level} ${emoji}</span>`;
+    }
+    function nickColorStyle(author) {
+      return (author && author.nickname_color) ? `color:${author.nickname_color};` : '';
+    }
+  </script>
+  <!-- Include toggleFollow from shared app.js -->
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" style="display:none;" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightbox-img" src="" alt="">
+  </div>
+
+  <script>
+    // ===== Shared functions (inlined to avoid let-redeclaration conflicts with app.js) =====
+    async function toggleFollow(userId) {
+      try {
+        const res = await fetch(`/api/follow/${userId}`, { method: 'POST', headers: authHeaders() });
+        if (!res.ok) { const e = await res.json(); showToast(e.error || '请先登录', 'error'); return; }
+        const data = await res.json();
+        const btn = document.getElementById(`follow-btn-${userId}`);
+        if (btn) {
+          btn.textContent = data.following ? '已关注' : '关注';
+          btn.classList.toggle('following', data.following);
+          btn.classList.toggle('not-following', !data.following);
+        }
+        showToast(data.following ? '已关注' : '已取消关注', 'success');
+      } catch { showToast('操作失败', 'error'); }
+    }
+
+    function showToast(msg, type) {
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      toast.style.display = 'block';
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').style.display = 'flex';
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+    }
+  </script>
+
+  <style>
+    .toast {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      background: var(--card-bg, #fff); color: var(--text, #0f1419); padding: 10px 24px;
+      border-radius: 20px; font-size: 0.9rem; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 400; border: 1px solid var(--border, #eff3f4); white-space: nowrap;
+    }
+    .toast.error { background: var(--card-bg, #fff); border-color: rgba(244,33,46,0.4); color: var(--danger, #f4212e); }
+    .toast.success { background: var(--card-bg, #fff); border-color: rgba(0,186,124,0.4); color: var(--success, #00ba7c); }
+  </style>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

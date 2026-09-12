@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>使用手册 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .guide-page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .guide-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .guide-card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .guide-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 16px 0 8px;
+      color: var(--text);
+    }
+    .guide-card p, .guide-card li {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .guide-card ul, .guide-card ol {
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+    .guide-card li {
+      margin-bottom: 6px;
+    }
+    .guide-step {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-step:last-child { border-bottom: none; }
+    .guide-step-num {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .guide-step-body { flex: 1; }
+    .guide-step-body strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 0.92rem;
+    }
+    .guide-step-body span {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+    .faq-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .faq-a {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .guide-footer {
+      text-align: center;
+      padding: 20px 0 40px;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" style="color:var(--text);text-decoration:none;font-weight:700;">← 返回</a>
+      <span style="font-weight:700;font-size:1.05rem;">📖 使用手册</span>
+      <span></span>
+    </div>
+  </header>
+
+  <div class="guide-page">
+    <!-- 这是什么 -->
+    <div class="guide-card">
+      <h2>🌈 这是什么</h2>
+      <p><strong>Phewall</strong>（发音：/fiːwɔːl/）是华二普陀的校园匿名交流墙。你可以在这里匿名或实名发帖、评论、点赞、转发、关注他人，和全校同学一起分享校园生活。</p>
+      <p style="margin-top:8px;">无论是表白、吐槽、求助、整活，还是分享日常——这里都是你畅所欲言的地方 🎉</p>
+    </div>
+
+    <!-- 快速上手 -->
+    <div class="guide-card">
+      <h2>🚀 快速上手</h2>
+
+      <h3>1️⃣ 注册 / 登录</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div class="guide-step-body">
+          <strong>本校学生</strong>
+          <span>选择「本校学生」，填写你的<strong>届</strong>（<strong>高考毕业年份</strong>后两位，如 2029 年高考 = 29 届）、<strong>班级</strong>（如 7 班）和<strong>真实姓名</strong>，设置密码即可注册。登录时需信息完全匹配。</span>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div class="guide-step-body">
+          <strong>外校生</strong>
+          <span>选择「外校生」，填写用户名、学校（可选）和密码。外校生可以看到大部分帖子，但标记了「对外校生不可见」的帖子不会显示。</span>
+        </div>
+      </div>
+
+      <h3>2️⃣ 发帖</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div class="guide-step-body">
+          <strong>选择分类</strong>
+          <span>从分类中选择一个（表白、祝福、整活、活动、体育、吐槽、建议、求助、日常、每日一水等），帮助大家更快找到你的帖子。</span>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div class="guide-step-body">
+          <strong>可选设置</strong>
+          <span>你可以选择<strong>匿名发布</strong>（不显示你的身份）、勾选<strong>🛡️ 对外校生不可见</strong>（仅限本校学生查看），还可以<strong>上传图片或视频</strong>（最大 50MB）。</span>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-num">3</div>
+        <div class="guide-step-body">
+          <strong>认证用户可置顶</strong>
+          <span>已通过组织认证的用户（如社团、学生会）可以发布<strong>置顶通知</strong>，帖子会显示在列表顶部。</span>
+        </div>
+      </div>
+
+      <h3>3️⃣ 评论 / 点赞 / 转发</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">❤️</div>
+        <div class="guide-step-body">
+          <strong>互动方式</strong>
+          <span>点击帖子下方的 ❤️ 点赞、💬 打开评论区发表评论、🔁 转发到自己的主页。评论还可以互相回复，也可以给评论点赞 👍。</span>
+        </div>
+      </div>
+
+      <h3>4️⃣ 关注他人</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">👥</div>
+        <div class="guide-step-body">
+          <strong>关注与动态流</strong>
+          <span>点击用户头像进入个人主页，点击<strong>「关注」</strong>按钮。关注后，侧边栏的 <strong>「👥 关注」</strong>页面会聚合显示你关注的用户的最新帖子。</span>
+        </div>
+      </div>
+
+      <h3>5️⃣ 举报</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">🚩</div>
+        <div class="guide-step-body">
+          <strong>保护社区环境</strong>
+          <span>遇到违规内容（辱骂、谣言、广告、泄露隐私等），点击帖子下方的 🚩 举报按钮，选择举报原因即可。帖子被举报 <strong>5 次后自动隐藏</strong>。如果内容<strong>涉及你自己</strong>（如泄露你的隐私），选择「涉及自己」后帖子会<strong>立即隐藏</strong>。</span>
+        </div>
+      </div>
+
+      <h3>6️⃣ 申诉</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">📝</div>
+        <div class="guide-step-body">
+          <strong>姓名被占用 / 忘记密码</strong>
+          <span>如果你的姓名已被他人注册，或忘记了密码，可以在<strong>登录页</strong>点击「申诉」链接，提交申诉申请。管理员审核后会将结果通过通知告知。</span>
+        </div>
+      </div>
+
+      <h3>7️⃣ 数据与隐私</h3>
+      <div class="guide-step">
+        <div class="guide-step-num">🛡️</div>
+        <div class="guide-step-body">
+          <strong>你掌握自己的数据</strong>
+          <span>在<strong>设置页</strong>的「🛡️ 数据与隐私」中，你可以<strong>导出</strong>自己的所有数据（JSON 格式），也可以<strong>注销账号</strong>。注销后，你的帖子/评论将匿名化保留。</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="guide-card">
+      <h2>❓ 常见问题 FAQ</h2>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 可以修改已发布的帖子吗？</div>
+        <div class="faq-a">A: 暂不支持修改帖子内容。如果你需要更正，可以<strong>删除重发</strong>——删除按钮在你自己的帖子下方（🗑️ 图标）。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 班级填错了怎么办？</div>
+        <div class="faq-a">A: 在<strong>设置页</strong>的「📋 班级信息」中可以随时修改班级。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 外校生能做什么？</div>
+        <div class="faq-a">A: 外校生可以<strong>浏览、发帖、评论、点赞</strong>，但看不到标记了「对外校生不可见」的帖子。外校生不需要填写届和班级，用用户名+密码注册即可。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 遇到骚扰 / 广告怎么办？</div>
+        <div class="faq-a">A: 直接<strong>举报</strong>（🚩 按钮）。帖子累计被举报 5 次会自动隐藏；涉及你本人的内容举报后会立即隐藏。你的举报是匿名的。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 置顶帖子是谁发的？</div>
+        <div class="faq-a">A: 置顶帖子由<strong>已认证的校园组织</strong>（如学生会、社团）发布。如果你代表学校组织，可以在设置页提交认证申请。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q: 怎么联系站长？</div>
+        <div class="faq-a">A: 点击侧边栏的 <strong>「💬 给我留言」</strong>，或发送邮件至 tinzhang3141@gmail.com。欢迎任何问题、建议和反馈！</div>
+      </div>
+    </div>
+
+    <div class="guide-footer">
+      <a href="/" class="btn btn-primary" style="text-decoration:none;">🏠 返回首页</a>
+    </div>
+  </div>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

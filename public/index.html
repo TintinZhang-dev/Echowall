@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar (desktop: always visible, mobile: overlay) -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-logo">Phewall</div>
+
+        <div class="sidebar-nav">
+          <a href="/" class="nav-item active" data-page="home">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">首页</span>
+          </a>
+          <a href="#" class="nav-item" onclick="switchToFollowing()" id="sidebar-following">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">关注</span>
+          </a>
+          <a href="/boards" class="nav-item">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">板块</span>
+          </a>
+          <a href="/search" class="nav-item">
+            <span class="nav-icon">🔍</span>
+            <span class="nav-label">搜索</span>
+          </a>
+          <a href="/notifications" class="nav-item">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-label">通知</span>
+            <span id="sidebar-badge" class="nav-badge" style="display:none;">0</span>
+          </a>
+          <a href="/guide" class="nav-item">
+            <span class="nav-icon">📖</span>
+            <span class="nav-label">使用手册</span>
+          </a>
+          <a href="/app" class="nav-item" id="sidebar-app-item">
+            <span class="nav-icon">📱</span>
+            <span class="nav-label">安卓 App</span>
+          </a>
+          <a href="/settings" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">设置</span>
+          </a>
+          <a href="/dm" class="nav-item">
+            <span class="nav-icon">✉️</span>
+            <span class="nav-label">私信</span>
+            <span id="sidebar-dm-badge" class="nav-badge" style="display:none;">0</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openMessageModal(); return false;">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">给我留言</span>
+          </a>
+          <a id="sidebar-admin" href="/manage-changeme" class="nav-item" style="display:none;">
+            <span class="nav-icon">🔐</span>
+            <span class="nav-label">管理后台</span>
+          </a>
+          <a id="sidebar-founder" href="#" class="nav-item" style="display:none;" onclick="toggleFounderView(); return false;">
+            <span class="nav-icon" id="founder-icon">🕵️</span>
+            <span class="nav-label" id="founder-label">匿名解密</span>
+          </a>
+        </div>
+
+        <button class="btn btn-primary sidebar-post-btn" onclick="openPostModal()" id="sidebar-post-btn" style="display:none;">
+          发帖
+        </button>
+
+        <!-- User section at bottom -->
+        <div class="sidebar-user" id="sidebar-user" style="display:none;">
+          <div class="sidebar-user-avatar avatar-circle avatar-default" id="sidebar-avatar">?</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebar-name">用户</div>
+            <div class="sidebar-user-handle" id="sidebar-handle">@用户</div>
+          </div>
+          <button class="sidebar-more-btn" onclick="logout()" title="退出登录">🚪</button>
+        </div>
+        <a href="/login" class="nav-item" id="sidebar-login" style="display:block;">
+          <span class="nav-icon">🔑</span>
+          <span class="nav-label">登录</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Mobile overlay backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" style="display:none;"></div>
+
+    <!-- Main content area -->
+    <main class="main-content">
+      <!-- Mobile header -->
+      <header class="mobile-header" id="mobile-header">
+        <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+        <span class="mobile-header-title">Phewall</span>
+        <div class="mobile-header-actions">
+          <a href="/dm" id="mobile-dm-btn" class="mobile-icon-btn" style="display:none;text-decoration:none;color:var(--text);">
+            ✉️<span id="mobile-dm-badge" class="nav-badge" style="display:none;">0</span>
+          </a>
+          <a href="/notifications" id="mobile-notif-btn" class="mobile-icon-btn" style="display:none;text-decoration:none;color:var(--text);">
+            🔔<span id="mobile-notif-badge" class="nav-badge" style="display:none;">0</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Suspended banner -->
+      <div id="suspended-banner" class="suspended-banner" style="display:none;">
+        <p>⚠️ 你尚未填写班级信息，请在 <a href="/settings">设置页面</a> 补充班级，否则无法发帖、评论和点赞。</p>
+      </div>
+
+      <!-- Category bar -->
+      <div class="category-bar">
+        <button id="follow-back-btn" class="btn btn-secondary" onclick="switchBackToAll()" style="display:none;font-size:0.85rem;padding:6px 12px;margin-right:8px;white-space:nowrap;">← 返回</button>
+        <button class="cat-scroll-btn cat-scroll-left" onclick="scrollCat(-1)" style="display:none;">‹</button>
+        <div class="category-bar-inner" id="cat-bar-inner">
+          <button class="cat-btn active" data-cat="all" onclick="switchCat('all')">全部</button>
+          <button class="cat-btn" data-cat="blessing" onclick="switchCat('blessing')">🎉 祝福</button>
+          <button class="cat-btn" data-cat="fun" onclick="switchCat('fun')">😄 整活</button>
+          <button class="cat-btn" data-cat="activity" onclick="switchCat('activity')">📢 活动</button>
+          <button class="cat-btn" data-cat="sports" onclick="switchCat('sports')">⚽ 体育</button>
+          <button class="cat-btn" data-cat="rant" onclick="switchCat('rant')">💬 吐槽</button>
+          <button class="cat-btn" data-cat="advice" onclick="switchCat('advice')">💡 建议</button>
+          <button class="cat-btn" data-cat="question" onclick="switchCat('question')">❓ 求助</button>
+          <button class="cat-btn" data-cat="confession" onclick="switchCat('confession')">💕 表白</button>
+          <button class="cat-btn" data-cat="daily" onclick="switchCat('daily')">☀️ 日常</button>
+          <button class="cat-btn" data-cat="water" onclick="switchCat('water')">🌊 每日一水</button>
+          <button class="cat-btn" data-cat="treehole" onclick="switchCat('treehole')">🌳 树洞</button>
+          <button class="cat-btn" data-cat="emo" onclick="switchCat('emo')">😢 emo</button>
+          <button class="cat-btn" data-cat="friends" onclick="switchCat('friends')">🤝 交友</button>
+        </div>
+        <button class="cat-scroll-btn cat-scroll-right" onclick="scrollCat(1)" style="display:none;">›</button>
+      </div>
+
+      <!-- Following manage button (only visible in following feed) -->
+      <div id="manage-following-area" style="display:none;padding:8px 4px;margin-bottom:4px;">
+        <button class="btn btn-secondary" onclick="toggleFollowingList()" style="font-size:0.85rem;padding:6px 12px;width:100%;">
+          👥 管理关注名单
+        </button>
+        <div id="following-list" style="display:none;margin-top:8px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:10px;">
+          <!-- Following users rendered here -->
+        </div>
+      </div>
+
+      <!-- Posts timeline -->
+      <div id="post-list" class="post-list">
+        <!-- Posts rendered here -->
+      </div>
+
+      <!-- IntersectionObserver sentinel for infinite scroll -->
+      <div id="scroll-sentinel"></div>
+
+      <!-- Load more -->
+      <div id="load-more-area" class="load-more-area">
+        <button id="load-more-btn" class="btn btn-load-more" onclick="loadPosts()">
+          加载更多
+        </button>
+        <div id="loading-spinner" class="spinner" style="display:none;">
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+        </div>
+        <p id="no-more" class="no-more" style="display:none;">— 没有更多了 —</p>
+      </div>
+
+      <!-- Login prompt -->
+      <div id="login-prompt" class="login-prompt" style="display:none;">
+        <div class="login-prompt-card">
+          <p>登录后可以发帖、评论和点赞</p>
+          <a href="/login" class="btn btn-primary">登录</a>
+          <a href="/register" class="btn btn-secondary" style="margin-left:8px;">注册</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Notification Dropdown -->
+  <div id="notification-dropdown" class="notification-dropdown" style="display:none;">
+    <div class="notification-dropdown-header">
+      <span>通知<span id="dropdown-unread-dot" style="display:none;width:8px;height:8px;background:var(--danger);border-radius:50%;margin-left:6px;vertical-align:middle;"></span></span>
+      <button class="btn-logout" onclick="markAllNotificationsRead()" style="font-size:0.78rem;">全部已读</button>
+    </div>
+    <div id="notification-list" class="notification-list">
+      <p style="color:var(--text-muted);font-size:0.85rem;padding:16px;text-align:center;">暂无通知</p>
+    </div>
+  </div>
+
+  <!-- Post Modal -->
+  <div id="post-modal" class="modal" style="display:none;">
+    <div class="modal-backdrop" onclick="closePostModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>发帖</h2>
+        <button class="modal-close" onclick="closePostModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="post-identity-info" id="post-identity-info" style="display:none;">
+          <span class="avatar-circle avatar-default" id="modal-avatar">?</span>
+          <div>
+            <span id="modal-author-name" style="font-weight:700;font-size:0.9rem;"></span>
+            <span class="post-author-info" id="modal-author-detail" style="display:block;font-size:0.78rem;"></span>
+          </div>
+        </div>
+
+        <label class="form-label">分类 <span class="form-required">*</span></label>
+        <select id="post-category" class="form-select">
+          <option value="other">不分类</option>
+          <option value="blessing">🎉 祝福</option>
+          <option value="fun">😄 整活</option>
+          <option value="sports">⚽ 体育</option>
+          <option value="activity">📢 活动</option>
+          <option value="rant">💬 吐槽</option>
+          <option value="advice">💡 建议</option>
+          <option value="question">❓ 求助</option>
+          <option value="confession">💕 表白</option>
+          <option value="daily">☀️ 日常</option>
+          <option value="water">🌊 每日一水</option>
+          <option value="treehole">🌳 树洞</option>
+          <option value="friends">🤝 交友</option>
+          <option value="emo">😢 emo</option>
+        </select>
+
+        <label class="form-label">内容 <span class="form-required">*</span></label>
+        <div class="md-toolbar">
+          <button type="button" class="md-btn" onclick="wrapMd('post-content','**','**')" title="加粗"><strong>B</strong></button>
+          <button type="button" class="md-btn md-btn-i" onclick="wrapMd('post-content','*','*')" title="斜体"><em>I</em></button>
+          <button type="button" class="md-btn md-btn-s" onclick="wrapMd('post-content','~~','~~')" title="删除线"><s>S</s></button>
+        </div>
+        <textarea id="post-content" class="form-textarea" rows="4" placeholder="说点什么吧..." maxlength="5000"></textarea>
+        <p class="form-hint" style="margin-top:4px;"><span id="char-count">0</span>/5000</p>
+
+        <label class="form-label">图片/视频 <span class="form-hint">（可选，最多 3 个，单张 ≤20MB）</span></label>
+        <input type="file" id="post-media" class="form-file" accept="image/*,video/*" multiple>
+        <div id="media-preview" class="media-preview" style="display:none;"></div>
+
+        <!-- [2026-08-31] Word 文档附件（仅 .docx，防宏病毒） -->
+        <label class="form-label" style="margin-top:10px;">Word 文档 <span class="form-hint">（可选，仅 .docx ≤10MB；不支持 .doc/.docm，防宏病毒）</span></label>
+        <input type="file" id="post-docx" class="form-file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <div id="docx-preview" class="docx-card" style="display:none;margin-top:8px;"></div>
+
+        <!-- [2026-08-03] 任务5: Poll section -->
+        <div class="form-check-row">
+          <input type="checkbox" id="post-has-poll" onchange="togglePollSection()">
+          <label for="post-has-poll">🗳️ 发起投票</label>
+        </div>
+        <div id="poll-section" style="display:none;">
+          <label class="form-label">投票问题</label>
+          <input type="text" id="poll-question" class="form-input" placeholder="投票问题（如：哪个社团最好玩？）" maxlength="200">
+          <label class="form-label" style="margin-top:10px;">选项</label>
+          <div id="poll-options-container">
+            <div class="poll-option-row" style="display:flex;gap:6px;margin-bottom:6px;">
+              <input type="text" class="form-input poll-option-input" placeholder="选项 1" maxlength="100" style="flex:1;">
+            </div>
+            <div class="poll-option-row" style="display:flex;gap:6px;margin-bottom:6px;">
+              <input type="text" class="form-input poll-option-input" placeholder="选项 2" maxlength="100" style="flex:1;">
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary" id="add-poll-option-btn" onclick="addPollOption()" style="font-size:0.82rem;padding:6px 14px;margin-top:4px;">+ 添加选项</button>
+          <span class="form-hint" style="margin-left:8px;">最多 8 个选项</span>
+        </div>
+
+        <div class="form-check-row">
+          <input type="checkbox" id="post-anonymous">
+          <label for="post-anonymous">匿名发布</label>
+        </div>
+
+        <div class="form-check-row">
+          <input type="checkbox" id="post-ext-hidden">
+          <label for="post-ext-hidden">🛡️ 对外校生不可见</label>
+        </div>
+
+        <div class="form-check-row" id="post-pin-row" style="display:none;">
+          <input type="checkbox" id="post-pin">
+          <label for="post-pin">📌 发布为置顶通知</label>
+        </div>
+
+        <div class="form-check-row" id="post-privilege-pin-row" style="display:none;">
+          <input type="checkbox" id="post-privilege-pin">
+          <label for="post-privilege-pin">📌 使用置顶特权（Lv.4+，置顶自己的帖子）</label>
+        </div>
+        <p class="form-hint" id="post-privilege-pin-hint" style="display:none;margin:0 0 4px 24px;"></p>
+
+        <div id="post-error" class="form-error" style="display:none;"></div>
+
+        <button class="btn btn-primary btn-full" onclick="submitPost()" id="submit-btn">
+          发布
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="report-modal" class="modal" style="display:none;">
+    <div class="modal-backdrop" onclick="closeReportModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>举报帖子</h2>
+        <button class="modal-close" onclick="closeReportModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="report-confirm-text">确定要举报这条帖子吗？</p>
+        <label class="form-label">举报原因</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;font-size:0.85rem;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="辱骂/人身攻击" style="accent-color:var(--accent);">辱骂/人身攻击</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="谣言/不实信息" style="accent-color:var(--accent);">谣言/不实信息</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="泄露他人隐私" style="accent-color:var(--accent);">泄露他人隐私</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="广告/垃圾内容" style="accent-color:var(--accent);">广告/垃圾内容</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--warning);"><input type="radio" name="report-reason-opt" value="涉及自己" style="accent-color:var(--warning);">涉及自己（将立即隐藏）</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="report-reason-opt" value="其他" checked style="accent-color:var(--accent);">其他</label>
+        </div>
+        <textarea id="report-reason" class="form-textarea" rows="2" placeholder="补充说明（可选）"></textarea>
+        <div id="report-error" class="form-error" style="display:none;"></div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="closeReportModal()">取消</button>
+          <button class="btn btn-danger" onclick="submitReport()">确认举报</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message Modal -->
+  <div id="message-modal" class="modal" style="display:none;">
+    <div class="modal-backdrop" onclick="closeMessageModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>💬 给我留言</h2>
+        <button class="modal-close" onclick="closeMessageModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="my-messages" style="display:none;margin-bottom:16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:10px;">
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">📜 我的留言记录</p>
+          <div id="my-messages-list"></div>
+        </div>
+        <label class="form-label">留言内容 <span class="form-required">*</span></label>
+        <textarea id="message-content" class="form-textarea" rows="4" placeholder="想对站长说什么？" maxlength="500"></textarea>
+        <p class="form-hint" style="margin-top:4px;"><span id="message-char-count">0</span>/500</p>
+        <p class="form-hint" style="margin-top:4px;color:var(--text-muted);">可以匿名留言，站长回复后会通知你</p>
+        <div id="message-error" class="form-error" style="display:none;"></div>
+        <div class="btn-group" style="margin-top:12px;">
+          <button class="btn btn-secondary" onclick="closeMessageModal()">取消</button>
+          <button class="btn btn-primary" onclick="submitMessage()" id="message-submit-btn">发送留言</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" style="display:none;">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <button class="lightbox-prev" onclick="lightboxNav(-1)" id="lightbox-prev" style="display:none;">‹</button>
+    <button class="lightbox-next" onclick="lightboxNav(1)" id="lightbox-next" style="display:none;">›</button>
+    <div class="lightbox-counter" id="lightbox-counter" style="display:none;"></div>
+    <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation();">
+  </div>
+
+  <!-- Update prompt modal (in-app: new APK available) -->
+  <div id="update-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:24px;">
+    <div style="background:var(--card-bg,#fff);border-radius:16px;max-width:340px;width:100%;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2.4rem;margin-bottom:8px;">📱</div>
+      <div style="font-weight:700;font-size:1.05rem;margin-bottom:6px;" id="update-modal-title">发现新版本</div>
+      <p style="font-size:0.85rem;color:var(--text-muted,#666);margin-bottom:16px;line-height:1.5;" id="update-modal-desc"></p>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button onclick="closeUpdateModal()" style="flex:1;background:rgba(0,0,0,0.06);border:none;border-radius:10px;padding:10px 0;font-size:0.9rem;cursor:pointer;font-family:inherit;">稍后再说</button>
+        <button id="update-modal-go" onclick="goUpdate()" style="flex:1.4;background:var(--accent,#1d9bf0);color:#fff;border:none;border-radius:10px;padding:10px 0;font-size:0.9rem;font-weight:600;cursor:pointer;font-family:inherit;">立即更新</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <script src="/app.js?v=202609060208"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>

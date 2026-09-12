@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1d9bf0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>搜索 — Phewall</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=202609060208">
+  <style>
+    .search-page {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-top: calc(56px + 16px + env(safe-area-inset-top));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .search-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: -16px -16px 0;
+    }
+    .search-back {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 50%;
+    }
+    .search-back:hover { background: var(--bg-secondary); }
+    .search-input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 8px 16px;
+      gap: 8px;
+    }
+    .search-input-wrap input {
+      flex: 1;
+      border: none;
+      background: none;
+      outline: none;
+      font-size: 0.93rem;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .search-input-wrap input::placeholder { color: var(--text-muted); }
+    .search-icon { color: var(--text-muted); font-size: 1rem; }
+
+    .search-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin: 0 -16px;
+      padding: 0 16px;
+    }
+    .search-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .search-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .search-results { padding-top: 8px; }
+    .search-empty {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 40px 20px;
+      font-size: 0.9rem;
+    }
+
+    /* User card */
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .user-card:hover { background: var(--bg-secondary); }
+    .user-card-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .user-card-info { flex: 1; min-width: 0; }
+    .user-card-name { font-weight: 700; font-size: 0.93rem; }
+    .user-card-meta { font-size: 0.8rem; color: var(--text-muted); }
+    .user-card-badge {
+      display: inline-block;
+      background: rgba(29,155,240,0.1);
+      color: var(--accent);
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+      font-weight: 600;
+    }
+
+    /* Post card override */
+    .search-page .post-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="search-page">
+    <div class="search-header">
+      <button class="search-back" onclick="history.back()">←</button>
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="搜索帖子或用户..." onkeydown="if(event.key==='Enter')doSearch()">
+      </div>
+    </div>
+
+    <div class="search-tabs">
+      <button class="search-tab active" onclick="switchSearchTab('posts')" id="tab-posts">帖子</button>
+      <button class="search-tab" onclick="switchSearchTab('users')" id="tab-users">用户</button>
+    </div>
+
+    <div class="search-results" id="search-results">
+    </div>
+
+    <div class="search-empty" id="search-placeholder">输入关键词开始搜索</div>
+
+    <div id="search-loader" style="text-align:center;padding:16px;display:none;">
+      <div class="spinner" style="display:inline-flex;">
+        <div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div>
+      </div>
+    </div>
+
+    <div id="no-more" class="no-more" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem;">— 没有更多了 —</div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" style="display:none;" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightbox-img" src="" alt="">
+  </div>
+
+  <script>
+    const API = '';
+    let currentSearchTab = 'posts';
+    let searchPage = 1;
+    let searchHasMore = false;
+    let searchLoading = false;
+    let currentUser = null;
+    let currentQuery = '';
+
+    function getToken() { return localStorage.getItem('token'); }
+    function authHeaders() {
+      // Token is in httpOnly cookie — same-origin fetch sends it automatically
+      return {};
+    }
+
+    function initSearchPage() {
+      checkAuth();
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      if (q) {
+        document.getElementById('search-input').value = q;
+        doSearch();
+      }
+      document.getElementById('search-input').focus();
+    }
+    // readyState guard: init even if the script loads after DOMContentLoaded (slow networks)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSearchPage);
+    } else {
+      initSearchPage();
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.user;
+        }
+      } catch {}
+    }
+
+    function switchSearchTab(tab) {
+      currentSearchTab = tab;
+      document.querySelectorAll('.search-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (currentQuery) doSearch();
+    }
+
+    async function doSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+
+      currentQuery = q;
+      searchPage = 1;
+      searchLoading = false;
+
+      const placeholder = document.getElementById('search-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+      document.getElementById('search-loader').style.display = 'block';
+      document.getElementById('no-more').style.display = 'none';
+
+      if (currentSearchTab === 'posts') {
+        await searchPosts();
+      } else {
+        await searchUsers();
+      }
+    }
+
+    async function searchPosts() {
+      if (searchLoading) return;
+      searchLoading = true;
+      const results = document.getElementById('search-results');
+
+      try {
+        const res = await fetch(`/api/search/posts?q=${encodeURIComponent(currentQuery)}&page=${searchPage}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (searchPage === 1) results.innerHTML = '';
+
+        if (!data.posts || data.posts.length === 0) {
+          if (searchPage === 1) {
+            results.innerHTML = '<div class="search-empty">未找到相关帖子</div>';
+          }
+          searchHasMore = false;
+        } else {
+          data.posts.forEach(post => {
+            results.innerHTML += renderSearchPost(post);
+          });
+          searchPage++;
+          searchHasMore = searchPage <= data.totalPages;
+        }
+      } catch (err) {
+        if (searchPage === 1) results.innerHTML = '<div class="search-empty">搜索失败，请重试</div>';
+      }
+
+      searchLoading = false;
+      document.getElementById('search-loader').style.display = 'none';
+      if (searchHasMore) {
+        document.getElementById('no-more').style.display = 'none';
+      } else if (results.children.length > 0) {
+        document.getElementById('no-more').style.display = 'block';
+      }
+
+      // Set up scroll for more
+      setupScrollLoad();
+    }
+
+    async function searchUsers() {
+      searchLoading = true;
+      const results = document.getElementById('search-results');
+      document.getElementById('search-loader').style.display = 'block';
+
+      try {
+        const res = await fetch(`/api/search/users?q=${encodeURIComponent(currentQuery)}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json();
+
+        results.innerHTML = '';
+        document.getElementById('search-loader').style.display = 'none';
+
+        if (!data.users || data.users.length === 0) {
+          results.innerHTML = '<div class="search-empty">未找到相关用户</div>';
+        } else {
+          results.innerHTML = data.users.map(u => {
+            const displayName = u.nickname || u.name;
+            const initial = displayName[0];
+            const badge = u.verified_label
+              ? `<span class="user-card-badge">✓ ${escapeHtml(u.verified_label)}</span>`
+              : (u.is_verified ? '<span class="user-card-badge">✓ 已认证</span>' : '');
+            return `
+              <a href="/user/${u.id}" class="user-card">
+                <div class="user-card-avatar" style="overflow:hidden;">${avatarHtml(u)}</div>
+                <div class="user-card-info">
+                  <div class="user-card-name"><span style="${nickColorStyle(u)}">${escapeHtml(displayName)}</span>${levelBadgeHtml(u)}${badge}</div>
+                  <div class="user-card-meta">${u.year}届${u.class_number}班 · @${escapeHtml(u.name)} · ${u.follower_count || 0} 关注者</div>
+                </div>
+              </a>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        results.innerHTML = '<div class="search-empty">搜索失败，请重试</div>';
+      }
+      searchLoading = false;
+    }
+
+    // [2026-08-04] 任务5: Lightweight Markdown
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+      const codeBlocks = [];
+      html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+        return '\x00CB' + (codeBlocks.length - 1) + '\x00';
+      });
+      const inlineCodes = [];
+      html = html.replace(/`([^`]+)`/g, (_, code) => {
+        inlineCodes.push('<code>' + code + '</code>');
+        return '\x01IC' + (inlineCodes.length - 1) + '\x01';
+      });
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+      html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+      const paragraphs = html.split(/\n\n+/);
+      html = paragraphs.map(p => {
+        p = p.trim(); if (!p) return '';
+        if (p.startsWith('<pre>') || p.startsWith('<blockquote>')) return p;
+        p = p.replace(/\n/g, '<br>');
+        return '<p>' + p + '</p>';
+      }).join('');
+      html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)]);
+      html = html.replace(/\x01IC(\d+)\x01/g, (_, i) => inlineCodes[parseInt(i)]);
+      return html;
+    }
+
+    function renderSearchPost(post) {
+      const content = renderMarkdown((post.content || '').substring(0, 300));
+      const time = formatTime(post.created_at);
+      const displayName = post.author ? (post.author.nickname || post.author.name) : '匿名';
+      const catMap = {
+        'confession': '💕 表白', 'blessing': '🎉 祝福', 'fun': '😄 整活',
+        'activity': '📢 活动', 'rant': '💬 吐槽', 'advice': '💡 建议',
+        'question': '❓ 求助', 'other': '📌 其他', 'sports': '⚽ 体育',
+        'daily': '☀️ 日常', 'water': '🌊 每日一水', 'treehole': '🌳 树洞',
+        'friends': '🤝 交友', 'emo': '😢 emo' // [2026-08-16] 树洞/交友分类, [2026-08-31] emo
+      };
+      const catBadge = post.category ? `<span class="cat-badge">${catMap[post.category] || '📌 其他'}</span>` : '';
+      const authorInfo = post.author && !post.is_anonymous
+        ? `<span class="post-author-info">${post.author.year}届${post.author.class_number}班</span>`
+        : '';
+
+      let mediaHtml = '';
+      if (post.media_url) {
+        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(post.media_url);
+        mediaHtml = isVideo
+          ? `<div class="post-media"><video src="${escapeHtml(post.media_url)}" controls preload="metadata"></video></div>`
+          : `<div class="post-media"><img src="${escapeHtml(post.media_url)}" alt="图片" loading="lazy" onclick="event.stopPropagation();openLightbox(this.src)" style="cursor:pointer;"></div>`;
+      }
+
+      return `
+        <div class="post-card" style="cursor:pointer;" onclick="window.location='/post/${post.id}'">
+          <div class="post-card-top">
+            <div class="post-avatar-col">
+              ${avatarHtml(post.is_anonymous || !post.author ? null : post.author, post.is_anonymous || !post.author)}
+            </div>
+            <div class="post-body-col">
+              <div class="post-meta">
+                ${catBadge}
+                <span class="post-author-name">${post.author ? `<span style="${nickColorStyle(post.author)}">${escapeHtml(displayName)}</span>${levelBadgeHtml(post.author)}` : escapeHtml(displayName)}</span>
+                ${authorInfo}
+                <span class="post-time">${time}</span>
+              </div>
+              <div class="post-content">${content}</div>
+              ${mediaHtml}
+              <div class="post-actions" style="font-size:0.8rem;color:var(--text-muted);">
+                ❤️ ${post.like_count || 0} &nbsp; 💬 ${post.comment_count || 0}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let scrollTimer;
+    function setupScrollLoad() {
+      window.onscroll = () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          if (currentSearchTab !== 'posts') return;
+          const scrollBottom = window.innerHeight + window.scrollY;
+          const docHeight = document.documentElement.offsetHeight;
+          if (scrollBottom >= docHeight - 300 && searchHasMore && !searchLoading) {
+            searchPosts();
+          }
+        }, 150);
+      };
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').style.display = 'flex';
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr + 'Z');
+      const now = new Date();
+      const diff = now - date;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+      if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
+      return dateStr.substring(0, 10);
+    }
+    function avatarHtml(user, isAnonymous) {
+      if (!isAnonymous && user && user.avatar_type === 'custom' && user.avatar_url) {
+        return `<img src="${escapeHtml(user.avatar_url)}" class="avatar-img" alt="">`;
+      }
+      const displayName = user ? (user.nickname || user.name) : '';
+      const initial = displayName ? displayName[0] : '?';
+      const cls = isAnonymous ? 'avatar-anonymous' : (user ? 'avatar-initials' : 'avatar-anonymous');
+      return `<span class="avatar-circle ${cls}">${escapeHtml(initial)}</span>`;
+    }
+    function levelBadgeHtml(author) {
+      if (!author || !author.level) return '';
+      const color = author.level_color || '#9ca3af';
+      const emoji = author.level_emoji || '';
+      const name = author.level_name || '';
+      return `<span class="level-badge" style="color:${color};" title="Lv.${author.level} ${name}">Lv.${author.level} ${emoji}</span>`;
+    }
+    function nickColorStyle(author) {
+      return (author && author.nickname_color) ? `color:${author.nickname_color};` : '';
+    }
+  </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{});});}</script>
+</body>
+</html>
