@@ -81,7 +81,9 @@ function userWithLevel(u) {
 router.post('/register', (req, res) => {
   try {
     const { year, class_number, name, password, nickname, is_external, school } = req.body;
-    const external = is_external === true || is_external === 1 || is_external === '1' || is_external === 'true';
+    // [白标化 B3] hasClassSystem=false 时强制外校语义（year=0，按用户名注册）
+    const external = !siteConfig.school.hasClassSystem ||
+      is_external === true || is_external === 1 || is_external === '1' || is_external === 'true';
 
     // Agreement check (required)
     if (!req.body.agree) {
@@ -177,7 +179,9 @@ router.post('/register', (req, res) => {
 router.post('/login', (req, res) => {
   try {
     const { year, class_number, name, password, is_external } = req.body;
-    const external = is_external === true || is_external === 1 || is_external === '1' || is_external === 'true';
+    // [白标化 B3] hasClassSystem=false 时强制外校语义（year=0，按用户名登录）
+    const external = !siteConfig.school.hasClassSystem ||
+      is_external === true || is_external === 1 || is_external === '1' || is_external === 'true';
 
     if (!name || !password) {
       return res.status(400).json({ error: external ? '用户名和密码为必填项' : '届、姓名和密码为必填项' });

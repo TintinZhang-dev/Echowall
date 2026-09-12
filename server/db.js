@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const { siteConfig } = require('./config');
 
 const dbPath = path.join(__dirname, '..', 'data.db');
 const db = new Database(dbPath);
@@ -325,33 +326,20 @@ if (!columnExists('posts', 'docx_name')) {
   db.exec(`ALTER TABLE posts ADD COLUMN docx_name TEXT`);
 }
 
-// Seed initial boards if table is empty
-const boardCount = db.prepare('SELECT COUNT(*) as c FROM boards').get().c;
-if (boardCount === 0) {
-  const insertBoard = db.prepare('INSERT INTO boards (name, icon, description) VALUES (?, ?, ?)');
-  const seedBoards = [
-    ['足球', '⚽', '绿茵场上的热爱——聊球赛、球队、球星，约球也来这里'],
-    ['篮球', '🏀', '球场见！NBA、CBA、野球局，都来聊'],
-    ['F1', '🏎️', '速度与策略——新赛季、车队、车手，全在这里'],
-    ['二次元', '🦄', '番剧、漫画、游戏，同好交流'],
-    ['游戏', '🎮', '王者、原神、LOL……开黑、攻略、电竞，都来聊'],
-    ['音乐', '🎵', '歌单分享、新歌安利、演唱会同好'],
-    ['学习搭子', '📚', '竞赛、刷题、找学习搭子，互相督促'],
-    ['编程·科技', '💻', '代码、硬件、科创比赛，技术同好聚集地']
-  ];
-  for (const [name, icon, desc] of seedBoards) {
-    insertBoard.run(name, icon, desc);
-  }
-  console.log('[boards] Seeded 8 initial boards');
-}
-
-// [2026-08-08] 梧桐建议新增板块：原创小说（一次元）+ 三次元·现实（INSERT OR IGNORE，兼容已有库）
+// [白标化 B1] 板块初始化读 config：读 registry.boards（对象数组，兼容字符串）→ INSERT OR IGNORE（只增不删）
+// 合并原 seedBoards（仅空库播种）+ insertBoardIfMissing（增量补齐）为一个循环；空数组则跳过 seeding
 const insertBoardIfMissing = db.prepare('INSERT OR IGNORE INTO boards (name, icon, description) VALUES (?, ?, ?)');
-insertBoardIfMissing.run('原创小说', '📖', '一次元的文字世界——原创、连载、同人，把脑洞写成故事');
-insertBoardIfMissing.run('三次元·现实', '🌐', '现实生活杂谈——日常见闻、校园趣事、真人真事都来聊');
-insertBoardIfMissing.run('羽毛球', '🏸', '约球、比赛、技术战术——羽球同好集合地，球场见');
-insertBoardIfMissing.run('影视', '🎬', '电影、剧集、动漫——新片安利、烂片吐槽都来聊');
-console.log('[boards] Ensure new boards exist');
+const configBoards = siteConfig.registry && siteConfig.registry.boards;
+if (Array.isArray(configBoards)) {
+  for (const b of configBoards) {
+    if (typeof b === 'string') {
+      insertBoardIfMissing.run(b, '📌', ''); // 字符串 → 默认 emoji + 空描述
+    } else if (b && typeof b === 'object' && b.name) {
+      insertBoardIfMissing.run(b.name, b.icon || '📌', b.description || '');
+    }
+  }
+}
+console.log('[boards] Ensure boards exist from config (' + (Array.isArray(configBoards) ? configBoards.length : 0) + ' boards)');
 
 // [2026-08-07] 点赞通知关联帖子
 if (!columnExists('notifications', 'post_id')) {

@@ -97,6 +97,19 @@
     }
 
     let externalMode = false;
+
+    // [白标化 B3] hasClassSystem=false 时强制外校注册（隐藏届/班级，走 external 分支）
+    function applyClassSystemMode() {
+      const hasClass = !window.siteGet || window.siteGet('school.hasClassSystem') !== false;
+      if (hasClass) return; // 有届班体系：行为不变
+      externalMode = true;
+      document.getElementById('internal-fields').style.display = 'none';
+      document.getElementById('external-fields').style.display = '';
+      const toggleBtn = document.getElementById('ext-toggle-btn');
+      if (toggleBtn) toggleBtn.style.display = 'none';
+    }
+    window.__onSiteConfigLoaded = applyClassSystemMode;
+
     function toggleExternalMode() {
       externalMode = !externalMode;
       document.getElementById('internal-fields').style.display = externalMode ? 'none' : '';

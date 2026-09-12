@@ -9,6 +9,7 @@ router.get('/site-config', (req, res) => {
     school: {
       name: siteConfig.school.name,
       shortName: siteConfig.school.shortName || '',
+      abbr: siteConfig.school.abbr || '',
       hasClassSystem: !!siteConfig.school.hasClassSystem
     },
     product: {

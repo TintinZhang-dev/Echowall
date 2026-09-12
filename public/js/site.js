@@ -135,6 +135,16 @@
     if (getPath(cfg, 'founder.showInFooter') !== false) {
       injectFooter(cfg);
     }
+
+    // 5) hasClassSystem 开关：给 body 打标记 + 通知页面回调（供注册/登录页切换字段）
+    if (getPath(cfg, 'school.hasClassSystem') === false) {
+      document.body.classList.add('no-class-system');
+    } else {
+      document.body.classList.remove('no-class-system');
+    }
+    if (typeof window.__onSiteConfigLoaded === 'function') {
+      window.__onSiteConfigLoaded(cfg);
+    }
   }
 
   // 先用缓存同步渲染，再异步拉最新覆盖

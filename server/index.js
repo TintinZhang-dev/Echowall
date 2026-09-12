@@ -198,24 +198,23 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   res.send(JSON.stringify(assetlinks));
 });
 
-// Admin page — configurable path via ADMIN_PATH env var
-const adminPath = process.env.ADMIN_PATH || '/admin';
+// Admin page — configurable path via config.adminPath → env ADMIN_PATH → /admin
+const adminCustomPath = siteConfig.adminPath || process.env.ADMIN_PATH; // 自定义路径（空则用默认 /admin）
+const adminPath = adminCustomPath || '/admin';
 app.get(adminPath, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 // Keep /admin.html redirect for legacy bookmarks
-// Hide admin path — only serve at custom ADMIN_PATH when set
+// Hide admin path — only serve at custom path when set
 app.get('/admin', (req, res) => {
-  const dest = process.env.ADMIN_PATH;
-  if (dest) {
+  if (adminCustomPath) {
     return res.status(404).send('Not Found');
   }
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
 app.get('/admin.html', (req, res) => {
-  const dest = process.env.ADMIN_PATH;
-  if (dest) {
+  if (adminCustomPath) {
     return res.status(404).send('Not Found');
   }
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));

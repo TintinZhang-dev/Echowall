@@ -2,6 +2,7 @@
   "school": {
     "name": "华二普陀",
     "shortName": "华普",
+    "abbr": "phe",
     "hasClassSystem": true
   },
   "product": {
@@ -26,7 +27,26 @@
     "exposeInApi": true
   },
   "registry": {
-    "boards": ["足球", "篮球", "F1"]
+    "boards": [
+      { "name": "足球", "icon": "⚽", "description": "绿茵场上的热爱——聊球赛、球队、球星，约球也来这里" },
+      { "name": "篮球", "icon": "🏀", "description": "球场见！NBA、CBA、野球局，都来聊" },
+      { "name": "F1", "icon": "🏎️", "description": "速度与策略——新赛季、车队、车手，全在这里" },
+      { "name": "二次元", "icon": "🦄", "description": "番剧、漫画、游戏，同好交流" },
+      { "name": "游戏", "icon": "🎮", "description": "王者、原神、LOL……开黑、攻略、电竞，都来聊" },
+      { "name": "音乐", "icon": "🎵", "description": "歌单分享、新歌安利、演唱会同好" },
+      { "name": "学习搭子", "icon": "📚", "description": "竞赛、刷题、找学习搭子，互相督促" },
+      { "name": "编程·科技", "icon": "💻", "description": "代码、硬件、科创比赛，技术同好聚集地" },
+      { "name": "原创小说", "icon": "📖", "description": "一次元的文字世界——原创、连载、同人，把脑洞写成故事" },
+      { "name": "三次元·现实", "icon": "🌐", "description": "现实生活杂谈——日常见闻、校园趣事、真人真事都来聊" },
+      { "name": "羽毛球", "icon": "🏸", "description": "约球、比赛、技术战术——羽球同好集合地，球场见" },
+      { "name": "影视", "icon": "🎬", "description": "电影、剧集、动漫——新片安利、烂片吐槽都来聊" },
+      { "name": "交易区", "icon": "🛒", "description": "闲置书籍、教辅、文具、生活用品……拍照发布，联系方式评论区私聊" },
+      { "name": "夸夸区", "icon": "🌟", "description": "真诚地夸赞同学、老师、父母——让温暖被看见" }
+    ]
   },
+  "welcomePost": {
+    "content": "👋 欢迎来到 {school} 校园墙！这里是 {school} 同学们自由交流的地方——你可以匿名或实名发帖、评论、点赞、转发，在分区里找到同好。有任何问题或建议，随时联系站长。（可由每校自定义）"
+  },
+  "adminPath": "/manage-changeme",
   "domain": "phewall.com"
 }
