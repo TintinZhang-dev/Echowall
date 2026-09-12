@@ -65,9 +65,16 @@ server/config.js（加载 + 深合并默认值 + 校验 school.name/product.name
 4. **部署 + 重启**：
 
    ```bash
-   ./deploy.sh          # rsync 到 VPS（site.config.json 会一起同步上去）
+   ./deploy.sh          # rsync 到 VPS（site.config.json 已排除，不会被覆盖）
    # deploy.sh 末尾已自动执行 pm2 restart phewall
    ```
+
+   > ⚠️ **`deploy.sh` 不传 `site.config.json`**（它是每校独立配置，只存在于服务器本地）。
+   > 首次在某个站点启用白标化代码时，需先手动放一次，否则服务因缺配置启动失败：
+   > ```bash
+   > scp ~/phewall/site.config.json <host>:/root/phewall/
+   > ```
+   > 之后每次 deploy 都会保留服务器上已有的 `site.config.json`（`--exclude` 同时防止 `--delete` 删它）。
 
 5. **验证**：`curl https://<domain>/api/site-config` 应返回新学校名；刷新页面，标题/页头/页脚/主题色全部变。
 
