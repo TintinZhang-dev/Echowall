@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EchoWall · 回声墙 —— 每所学校都该有的墙</title>
+<meta name="description" content="EchoWall（回声墙）是一个可白标化快速复制的校园匿名交流墙：Node.js + Express + SQLite，一套代码通过一份配置就能变成任意一所学校自己的墙。">
+<meta name="theme-color" content="#1D9BF0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231D9BF0'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --accent:#1D9BF0; --bg:#0b1020; --card:#141a2e; --text:#e8edf7; --muted:#93a1b8; --line:#26304a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:radial-gradient(1200px 600px at 50% -10%, #16224a 0%, var(--bg) 60%); color:var(--text);
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+         line-height:1.7; -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); text-decoration:none; }
+  .wrap { max-width:960px; margin:0 auto; padding:64px 22px 48px; }
+  header.hero { text-align:center; }
+  .logo { display:inline-flex; align-items:center; gap:10px; font-weight:800; font-size:1.1rem; letter-spacing:.5px;
+          background:rgba(29,155,240,.12); border:1px solid rgba(29,155,240,.35); color:#cfe9ff; padding:6px 14px; border-radius:999px; }
+  h1 { font-size:clamp(2rem,6vw,3.2rem); margin:22px 0 8px; line-height:1.2; }
+  h1 .grad { background:linear-gradient(90deg,#7fd0ff,#1D9BF0 60%,#7c5cff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tag { color:var(--muted); font-size:1.05rem; margin:0 auto; max-width:640px; }
+  .cta { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:26px 0 6px; }
+  .btn { display:inline-block; padding:11px 20px; border-radius:12px; font-weight:600; border:1px solid var(--line); color:var(--text); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#04121f; }
+  .btn.ghost:hover { border-color:var(--accent); }
+  /* 界面示意（设计稿） */
+  .mock { margin:46px auto 10px; max-width:420px; background:var(--card); border:1px solid var(--line);
+          border-radius:20px; padding:14px; box-shadow:0 30px 80px -30px #000; }
+  .mock .bar { display:flex; align-items:center; gap:8px; padding:4px 6px 12px; color:var(--muted); font-size:.8rem; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#33405f; }
+  .post { background:#0f1730; border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px; text-align:left; }
+  .post .who { font-size:.8rem; color:var(--muted); margin-bottom:4px; }
+  .post .txt { font-size:.92rem; }
+  .post .act { font-size:.78rem; color:var(--muted); margin-top:8px; }
+  .cap { color:var(--muted); font-size:.8rem; text-align:center; }
+  section { margin-top:56px; }
+  h2 { font-size:1.3rem; margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+  .card h3 { margin:0 0 6px; font-size:1rem; }
+  .card p { margin:0; color:var(--muted); font-size:.9rem; }
+  .stack { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:.85rem; color:#c9d6ea; background:#101830; }
+  pre { background:#0d1428; border:1px solid var(--line); border-radius:14px; padding:16px; overflow:auto; font-size:.86rem; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  footer { margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem;
+           display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="logo">🧱 EchoWall · 回声墙</span>
+    <h1>每所学校都该有的<span class="grad">墙</span></h1>
+    <p class="tag">一套代码，通过一份 <code>site.config.json</code>，就能变成任意一所学校自己的校园匿名交流墙 ——
+      自己的名字、Logo、主题色、域名、数据隔离，连 APK 都能独立签名打包。</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/TintinZhang-dev/Echowall">查看源码 →</a>
+      <a class="btn ghost" href="https://phewall.com">现网实例 phewall.com</a>
+    </div>
+    <p class="cap">现网实例：华二普陀校园墙（由 EchoWall 白标化而成）</p>
+
+    <div class="mock" aria-label="界面示意图">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">演示中学 · 校园墙</span></div>
+      <div class="post">
+        <div class="who">🎒 咖啡因战士 · 学习搭子</div>
+        <div class="txt">新学期社团招新都开始了吗？想找个编程社玩玩</div>
+        <div class="act">❤️ 32 · 💬 8 · 🔁 3</div>
+      </div>
+      <div class="post">
+        <div class="who">🏸 扣杀选手 · 羽毛球</div>
+        <div class="txt">有人一起打羽毛球吗，周日下午体育馆</div>
+        <div class="act">❤️ 17 · 💬 5 · 🔁 1</div>
+      </div>
+      <p class="cap">界面示意图（实际配色/文案随各校配置变化）</p>
+    </div>
+  </header>
+
+  <section>
+    <h2>✨ 能做什么</h2>
+    <div class="grid">
+      <div class="card"><h3>📝 发帖与互动</h3><p>文字 / 图片 / 视频 / Word 投稿，匿名或实名；点赞、评论、转发、关注、私信。</p></div>
+      <div class="card"><h3>🗂️ 分区板块</h3><p>板块列表由配置驱动，开学初一套预置，之后可自由增删。</p></div>
+      <div class="card"><h3>🏅 积分等级</h3><p>仿 B 站经验值，防刷上限 + 可审计流水；等级解锁彩色昵称、置顶等特权。</p></div>
+      <div class="card"><h3>🛡️ 内容治理</h3><p>举报（账号去重 + 自动隐藏）、申诉、IP 封禁、管理员操作日志。</p></div>
+      <div class="card"><h3>🔐 账号体系</h3><p>JWT（httpOnly cookie）；"届 / 班"体系可选开关，外校或社会版可关掉。</p></div>
+      <div class="card"><h3>☁️ 媒体存储</h3><p>Cloudflare R2，对象键按校前缀隔离；Word 附件三层防宏病毒校验。</p></div>
+      <div class="card"><h3>📱 PWA + App</h3><p>网页可"添加到主屏幕"；每校独立包名 / 图标 / 签名 keystore 的 TWA APK。</p></div>
+      <div class="card"><h3>⚡ 一键开通</h3><p><code>provision-school.sh</code>：从校名 / 域名生成配置、keystore、APK 与部署清单。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🏗️ 技术栈</h2>
+    <div class="stack">
+      <span class="chip">Node.js</span><span class="chip">Express</span><span class="chip">SQLite (better-sqlite3, WAL)</span>
+      <span class="chip">纯 HTML / CSS / JS</span><span class="chip">Cloudflare R2</span>
+      <span class="chip">Cloudflare Tunnel</span><span class="chip">pm2</span><span class="chip">Bubblewrap / TWA</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>🚀 本地跑起来</h2>
+<pre><code>git clone https://github.com/TintinZhang-dev/Echowall.git
+cd Echowall
+npm install
+cp site.config.example.json site.config.json   # 按需修改校名/域名/板块
+npm run init-site                               # 初始化板块 + 欢迎帖（幂等）
+JWT_SECRET=change-me npm start                 # http://localhost:3000</code></pre>
+  </section>
+
+  <footer>
+    <span>© 2026 EchoWall · MIT License</span>
+    <span><a href="https://github.com/TintinZhang-dev/Echowall">GitHub</a> · <a href="https://phewall.com">phewall.com</a></span>
+  </footer>
+</div>
+</body>
+</html>

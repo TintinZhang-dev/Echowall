@@ -2,6 +2,13 @@
 
 > 每所学校都该有的墙 —— 一套可白标化（white-label）快速复制的校园匿名交流墙。
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white)
+![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+
 EchoWall 是一个面向中学的校园社区平台：文字 / 图片 / 视频 / Word 投稿、点赞、评论、转发、关注、私信、分区板块、积分等级、举报与申诉审核、管理后台……**同一套代码，通过一份 `site.config.json` 就能变成任意一所学校自己的墙**（自己的名字、Logo、主题色、域名、数据隔离、独立签名 APK）。
 
 > 现网实例：华二普陀校园墙 <https://phewall.com>
