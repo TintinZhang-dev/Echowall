@@ -1,6 +1,8 @@
 # EchoWall · 回声墙
 
 > 每所学校都该有的墙 —— 一套可白标化（white-label）快速复制的校园匿名交流墙。
+>
+> 🔗 **在线预览（落地页）**：https://tintinzhang-dev.github.io/Echowall/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)
