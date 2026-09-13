@@ -25,6 +25,11 @@ site.config.json
 *.log
 debug-errors.log
 
+# 构建产物：APK 二进制不入库（deploy.sh 走 rsync 仍会带，线上不受影响）
+public/downloads/*.apk
+*.apk
+*.aab
+
 # 归档 / 临时
 *.tar.gz
 *.zip

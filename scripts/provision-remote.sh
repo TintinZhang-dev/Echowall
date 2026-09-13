@@ -53,6 +53,15 @@ cmd_install() {
   local dir="/root/phewall-$id"
   [ -d "$dir" ] || die "实例目录不存在：$dir"
   ensure_r2_env
+  # 每校独立 JWT 密钥（缺则生成，600）——防止各校令牌互认 / 默认密钥可猜
+  local jwt_file="$dir/.jwt-secret"
+  if [ ! -f "$jwt_file" ]; then
+    umask 077
+    openssl rand -base64 48 | tr -d '\n' > "$jwt_file"
+    chmod 600 "$jwt_file"
+    echo "[install] 已生成 $jwt_file"
+  fi
+  local jwt_secret; jwt_secret="$(cat "$jwt_file")"
   set -a; . "$R2_ENV"; set +a
   umask 077
   cat > "$dir/ecosystem.config.cjs" <<EOF
@@ -62,8 +71,10 @@ module.exports = {
     cwd: '$dir',
     script: 'server/index.js',
     env: {
+      NODE_ENV: 'production',
       PORT: '$port',
       ADMIN_PATH: '$admin_path',
+      JWT_SECRET: '$jwt_secret',
       LOGIN_GATE: 'on',
       RATE_LIMIT_DISABLED: '1',
       R2_ACCOUNT_ID: '$R2_ACCOUNT_ID',

@@ -1,6 +1,18 @@
 // Shared auth helpers: Bearer header OR httpOnly cookie token extraction
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'echowall-jwt-2026-change-me';
+
+// ===== JWT 密钥（安全加固 2026-09-13）=====
+// 生产必须通过环境变量 JWT_SECRET 提供；缺省时拒绝启动，绝不用可猜的硬编码密钥。
+// 开发环境（非 production）才回退到随机临时密钥（每次重启失效，仅供本地调试）。
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[auth] 致命：生产环境必须设置 JWT_SECRET（未设置等于允许任何人伪造登录令牌）');
+    process.exit(1);
+  }
+  JWT_SECRET = require('crypto').randomBytes(32).toString('hex');
+  console.warn('[auth] ⚠️ 未设置 JWT_SECRET，已生成临时密钥（仅限开发；生产请设 JWT_SECRET）');
+}
 const TOKEN_COOKIE = 'pw_token';
 
 function getTokenFromReq(req) {
