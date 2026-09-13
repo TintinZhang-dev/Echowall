@@ -18,7 +18,7 @@ rsync -av --delete \
   --exclude 'node_modules' --exclude '.git' --exclude 'data.db*' \
   --exclude 'uploads/*' --exclude 'package-lock.json' \
   --exclude 'ecosystem.config.cjs' --exclude 'debug-errors.log' \
-  --exclude 'site.config.json' \
+  --exclude 'site.config.json' --exclude 'keystore/' \
   ./ your-server:/root/phewall/
 
 # Restart
