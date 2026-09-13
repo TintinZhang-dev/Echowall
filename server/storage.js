@@ -1,9 +1,25 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const multer = require('multer');
+const { siteConfig } = require('./config');
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'a618b2b25f57d1450d66ad9fc3b1bd73';
-const R2_BUCKET = 'phewall-media';
-const R2_PUBLIC_URL = `https://pub-322f78eafc9a40ac9cc3e5df9db92bf8.r2.dev`;
+// ===== 白标化 · R2 隔离（Phase D）=====
+// 优先级：环境变量 → site.config.json 的 storage 块 → 内置默认值（兼容华普原有行为）。
+// keyPrefix 让多校共用一个桶而互不干扰（对象键加前缀，公共 URL 带前缀）。
+// 华普的 site.config.json 不写 storage（或 keyPrefix 为空）→ 行为与改造前完全一致。
+const storageCfg = (siteConfig && siteConfig.storage) || {};
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || storageCfg.accountId || 'a618b2b25f57d1450d66ad9fc3b1bd73';
+const R2_BUCKET = process.env.R2_BUCKET || storageCfg.bucket || 'phewall-media';
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || storageCfg.publicUrl || `https://pub-322f78eafc9a40ac9cc3e5df9db92bf8.r2.dev`).replace(/\/+$/, '');
+const KEY_PREFIX = String(storageCfg.keyPrefix || '').replace(/^\/+|\/+$/g, '');
+
+// 对象键：加校前缀（无前缀则原样）
+function applyPrefix(key) {
+  return KEY_PREFIX ? `${KEY_PREFIX}/${key}` : key;
+}
+// 公共 URL：R2_PUBLIC_URL + 完整对象键
+function publicUrlOf(key) {
+  return `${R2_PUBLIC_URL}/${applyPrefix(key)}`;
+}
 
 if (!process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
   console.error('[storage] ⚠️ R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY 未配置，上传功能将不可用！');
@@ -93,7 +109,8 @@ async function uploadToR2(file, customKey, opts) {
   if (opts && opts.contentType) type = opts.contentType;
   if (opts && opts.contentDisposition) disposition = opts.contentDisposition;
   const ext = EXT_MAP[type] || 'bin';
-  const key = customKey || `${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+  const rawKey = customKey || `${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+  const key = applyPrefix(rawKey);
 
   const putParams = {
     Bucket: R2_BUCKET,
@@ -111,7 +128,9 @@ async function uploadToR2(file, customKey, opts) {
 
 async function deleteFromR2(url) {
   if (!url || !url.includes(R2_PUBLIC_URL)) return;
-  const key = url.split('/').pop();
+  // 保留完整对象键（含校前缀）；旧数据（无前缀）也能正确解析
+  const key = url.slice(url.indexOf(R2_PUBLIC_URL) + R2_PUBLIC_URL.length + 1);
+  if (!key) return;
   await s3.send(new DeleteObjectCommand({
     Bucket: R2_BUCKET,
     Key: key,

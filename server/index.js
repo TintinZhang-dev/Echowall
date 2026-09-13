@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const points = require('./points');
@@ -112,6 +113,31 @@ app.use('/downloads', (req, res, next) => {
   next();
 });
 
+// PWA manifest 动态生成（白标化 Phase D）：名字/短名/描述/主题色/包名随 config，不再静态写死华普
+app.get('/manifest.json', (req, res) => {
+  const schoolName = siteConfig.school.name || '';
+  const m = {
+    name: schoolName + '校园墙',
+    short_name: siteConfig.brand.logoText || siteConfig.product.name || schoolName,
+    description: schoolName + '校园匿名交流墙 — 投稿、点赞、评论、私信、找同好',
+    id: (siteConfig.app && siteConfig.app.packageId) || undefined,
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#ffffff',
+    theme_color: siteConfig.brand.themeColor || '#1d9bf0',
+    lang: 'zh-CN',
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    ]
+  };
+  res.setHeader('Cache-Control', 'no-cache');
+  res.type('application/manifest+json').send(JSON.stringify(m, null, 2));
+});
+
 // security.txt 动态生成（Contact 邮箱 / Canonical / Policy 读 config，白标化随域名一起换）
 app.get('/.well-known/security.txt', (req, res) => {
   const domain = siteConfig.domain || 'phewall.com';
@@ -163,8 +189,14 @@ app.use((req, res, next) => {
 });
 
 // 首页(登录门禁之后才到这里;未登录已在门禁被重定向到 /login)
+// 白标化 Phase D：后台入口路径按实例注入（不写进公开 API，但用正则替换 HTML 里写死的华普路径）
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  fs.readFile(path.join(__dirname, '..', 'public', 'index.html'), 'utf8', (err, html) => {
+    if (err) { console.error('[index] 读取失败', err.message); return res.status(500).send('index unavailable'); }
+    html = html.replace(/\/manage-[0-9a-zA-Z_-]+/g, adminPath);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(html);
+  });
 });
 
 // Clean URLs — serve .html without extension

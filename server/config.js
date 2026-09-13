@@ -6,7 +6,7 @@ const path = require('path');
 
 // 内置默认值（深合并兜底；school.name / product.name 留空以便触发必填校验）
 const DEFAULTS = {
-  school: { name: '', shortName: '', hasClassSystem: true },
+  school: { name: '', shortName: '', abbr: '', hasClassSystem: true },
   product: { name: '', nameZh: '', slogan: '' },
   brand: { logoText: 'Phewall', themeColor: '#1D9BF0' },
   support: { contactEmail: '' },
@@ -15,7 +15,11 @@ const DEFAULTS = {
     showInFooter: true, showOnAbout: true, exposeInApi: true
   },
   registry: { boards: [] },
-  domain: ''
+  // 媒体存储（Phase D）：keyPrefix 用于多校共用桶的对象键隔离；空 = 不隔离（华普原行为）
+  storage: { accountId: '', bucket: '', publicUrl: '', keyPrefix: '' },
+  domain: '',
+  adminPath: '',
+  app: { packageId: '', sha256Fingerprint: '' }
 };
 
 function deepMerge(base, override) {

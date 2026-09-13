@@ -143,3 +143,30 @@ server/config.js（加载 + 深合并默认值 + 校验 school.name/product.name
 - **不改代码**的前提下，换学校 = 改 `site.config.json` + `pm2 restart`。
 - `site.config.json` 已被 `.gitignore` 排除，**签名私钥 `keystore/`、`ecosystem.config.cjs`、`.env` 同样不入库**。
 - 改完务必跑 `curl /api/site-config` 确认无敏感字段泄漏（不能出现 JWT_SECRET / R2 密钥 / 后台路径）。
+
+---
+
+## 九、Phase D —— 一键开通（`provision-school.sh`）
+
+```bash
+./provision-school.sh --id <schoolId> --name "<校名>" --domain <host> [--deploy]
+```
+
+不加 `--deploy` 只做**本地生成**（自动生成 config / keystore / TWA school.json / 部署清单）；加 `--deploy` 才动远程。常用参数：`--short --abbr --email --theme --logo-text --slogan --boards <file> --no-classes --package --port --target --skip-apk --skip-domain --skip-backup --skip-install --force`。
+
+**本地产物**：`~/phewall-provision/<id>/`（site.config.json、keystore 归档、`deploy-manifest.md`）+ `~/phewall-twa/schools/<id>/school.json`。
+
+**远程布局**（每校独立）：`/root/phewall-<id>/`（代码 + 独立 data.db + ecosystem）、pm2 进程 `phewall-<id>`、R2 键前缀 `<id>/`（备份 `backups/<id>/`）。
+
+**服务端助手** `scripts/provision-remote.sh`（由主脚本 SSH 调起，也可手动跑）：
+- `install <id> <port> <adminPath>` —— 从 `/root/.r2-env`（自动从现有实例抽取，600）注入凭据写 ecosystem
+- `domain <id> <host> <port> <zone>` —— 幂等插入 Cloudflare Tunnel ingress（404 前）+ 建 DNS CNAME（`<tunnel>.cfargotunnel.com`, proxied）
+- `backup <id>` —— 生成 `/root/.backup-key-<id>` + `/root/backup-<id>.sh` + crontab（每天 03:05 UTC）
+
+**白标化收口（Phase D 新增）**：
+- `GET /manifest.json` 改为**动态生成**（name/short_name/description/id/theme_color 读 config），不再静态写死华普
+- `GET /` 注入实例的后台路径：把 index.html 里写死的 `/manage-<hash>` 替换为 `siteConfig.adminPath`（正则替换，华普结果不变）
+- `server/storage.js` 支持 `storage.keyPrefix`（多校共用桶的对象键隔离；空=原行为）
+- `scripts/backup-site.js` 通用加密备份（R2 凭据走环境变量，密钥走文件，不写死）
+
+**安全**：绝不触碰华普实例的 data.db / keystore；`--id phe` 直接拒绝；远程操作全部幂等（ingress/crontab/DNS 先查后加）。

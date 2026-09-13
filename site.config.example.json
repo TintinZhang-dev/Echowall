@@ -40,6 +40,9 @@
   },
   "adminPath": "/manage-changeme",
   "domain": "example.com",
+  "storage": {
+    "keyPrefix": "example/"
+  },
   "app": {
     "packageId": "com.example.app",
     "sha256Fingerprint": ""
