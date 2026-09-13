@@ -7,7 +7,7 @@
 # 本地阶段（总是执行）：
 #   1) 生成 site.config.json（校名/品牌/板块/域名/后台路径/存储前缀）
 #   2) 生成独立签名 keystore（keytool）+ 指纹
-#   3) 生成 TWA school.json，可选构建该校 APK
+#   3) 生成 TWA school.json，可选构建该校 APK（默认版本 1.0.0，不继承华普 VERSION）
 #   4) 输出部署清单 deploy-manifest.md
 # 远程阶段（加 --deploy 才执行）：
 #   5) VPS 建目录 + rsync 代码 + 传 config + npm install + init-site
@@ -215,7 +215,7 @@ if [ "$SKIP_APK" = 1 ]; then
   ylw "  跳过 APK 构建（--skip-apk）"
 else
   step "3b/8 构建 APK（Phase C build-apk.sh）"
-  ( cd "$TWA_DIR" && ./build-apk.sh "$ID" ${APK_VERSION:-$(cat VERSION 2>/dev/null || echo 1.0.0)} )
+  ( cd "$TWA_DIR" && ./build-apk.sh "$ID" ${APK_VERSION:-1.0.0} )
   APK_OUT="$(ls -t "$TWA_DIR/dist/$ID"/*.apk 2>/dev/null | head -1 || true)"
   [ -n "$APK_OUT" ] && grn "  APK: $APK_OUT" || ylw "  未找到 APK 产物"
 fi
