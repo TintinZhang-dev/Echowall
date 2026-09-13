@@ -24,7 +24,7 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 TWA_DIR="$HOME/phewall-twa"
 STAGING_ROOT="$HOME/phewall-provision"
 KEYSTORE_DIR="$HOME/phewall/keystore"
-TARGET="your-server"
+TARGET="${PROVISION_TARGET:-}"   # 目标服务器（SSH 别名 / host）；用 --target 或环境变量 PROVISION_TARGET 指定
 REMOTE_BASE="/root/phewall"
 ZONE="phewall.com"
 
@@ -113,6 +113,7 @@ if [ -e "$STAGING" ] && [ "$FORCE" != 1 ]; then
   red "staging 已存在：$STAGING（加 --force 覆盖）"; exit 1
 fi
 if [ "$DEPLOY" = 1 ]; then
+  [ -n "$TARGET" ] || { red "缺少 --target 或环境变量 PROVISION_TARGET（如 PROVISION_TARGET=my-vps）"; exit 1; }
   ssh -o ConnectTimeout=10 "$TARGET" true || { red "无法连接 $TARGET"; exit 1; }
 fi
 strategy_boards="$SELF_DIR/site.config.example.json"

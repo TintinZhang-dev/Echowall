@@ -1,6 +1,27 @@
 {
   "name": "echowall",
   "version": "1.0.0",
+  "description": "每所学校都该有的墙 —— 可白标化快速复制的校园匿名交流墙（Node.js + Express + SQLite）",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TintinZhang-dev/Echowall.git"
+  },
+  "homepage": "https://github.com/TintinZhang-dev/Echowall#readme",
+  "bugs": {
+    "url": "https://github.com/TintinZhang-dev/Echowall/issues"
+  },
+  "keywords": [
+    "campus",
+    "forum",
+    "white-label",
+    "express",
+    "sqlite",
+    "pwa"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
