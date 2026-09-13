@@ -39,5 +39,9 @@
     "content": "👋 欢迎来到 {school} 校园墙！这里是 {school} 同学们自由交流的地方——你可以匿名或实名发帖、评论、点赞、转发，在分区里找到同好。有任何问题或建议，随时联系站长。"
   },
   "adminPath": "/manage-changeme",
-  "domain": "example.com"
+  "domain": "example.com",
+  "app": {
+    "packageId": "com.example.app",
+    "sha256Fingerprint": ""
+  }
 }

@@ -183,17 +183,24 @@ pages.forEach(p => {
 });
 
 // Android TWA Digital Asset Links (无地址栏全屏体验验证)
+// packageId / 指纹读 siteConfig.app（白标化 Phase C）；缺失时返回空数组（不崩、不回退华普指纹）
 app.get('/.well-known/assetlinks.json', (req, res) => {
-  const assetlinks = [
-    {
-      relation: ['delegate_permission/common.handle_all_urls'],
-      target: {
-        namespace: 'android_app',
-        package_name: 'com.phewall.app',
-        sha256_cert_fingerprints: ['F8:24:0F:7F:1A:59:CF:21:D2:6F:E1:ED:8F:27:5A:6F:83:4C:3F:56:34:EB:99:24:D9:9F:28:92:BB:2D:BB:E8']
+  const appCfg = siteConfig.app || {};
+  const packageId = appCfg.packageId;
+  const fp = appCfg.sha256Fingerprint;
+  let assetlinks = [];
+  if (packageId && fp) {
+    assetlinks = [
+      {
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: packageId,
+          sha256_cert_fingerprints: [fp]
+        }
       }
-    }
-  ];
+    ];
+  }
   res.setHeader('Content-Type', 'application/json');
   res.send(JSON.stringify(assetlinks));
 });
